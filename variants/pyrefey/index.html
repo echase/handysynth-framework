@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PYREFEY — Fire Wizardry / Fey Magik</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=DM+Mono:wght@300;400&display=swap');
+
+  *{margin:0;padding:0;box-sizing:border-box}
+
+  body{
+    background:#06060b;
+    color:#e8d5b5;
+    font-family:'DM Mono',monospace;
+    overflow:hidden;
+    user-select:none;
+    cursor:none;
+  }
+
+  #container{position:relative;width:100vw;height:100vh}
+  #videoEl{position:absolute;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);opacity:0;pointer-events:none}
+  #canvas{position:absolute;width:100%;height:100%}
+
+  /* ─── Controls ─── */
+  #controls{position:absolute;top:20px;left:20px;display:flex;flex-direction:column;gap:9px;z-index:10}
+  .ctrl-row{display:flex;align-items:center;gap:7px}
+  .ctrl-label{font-family:'Cinzel',serif;font-size:9px;letter-spacing:0.2em;opacity:0.25;width:50px;text-transform:uppercase}
+
+  .pill{
+    background:rgba(255,106,0,0.04);border:1px solid rgba(255,106,0,0.12);
+    color:rgba(232,213,181,0.4);padding:3px 11px;border-radius:2px;
+    cursor:pointer;font-size:10px;font-family:'DM Mono',monospace;
+    letter-spacing:0.08em;transition:all 0.25s;
+  }
+  .pill:hover{background:rgba(255,106,0,0.12);color:rgba(232,213,181,0.8);box-shadow:0 0 12px rgba(255,80,0,0.15)}
+  .pill.active{background:rgba(255,90,0,0.15);border-color:rgba(255,90,0,0.45);color:#ffd700;text-shadow:0 0 8px rgba(255,160,0,0.4)}
+
+  .channel{display:inline-flex;align-items:center;gap:5px;padding:2px 10px;border-radius:2px;border:1px solid rgba(255,255,255,0.06);font-size:9px;letter-spacing:0.06em;opacity:0.55}
+  .channel .dot{width:6px;height:6px;border-radius:50%;box-shadow:0 0 6px currentColor}
+
+  /* ─── Chrome ─── */
+  #legend{position:absolute;right:20px;top:20px;font-size:9px;letter-spacing:0.08em;opacity:0.2;line-height:2.3;text-align:right;z-index:10}
+  #legend em{font-style:normal;font-family:'Cinzel',serif;opacity:0.6;margin-right:6px;letter-spacing:0.15em;text-transform:uppercase}
+  #title-block{position:absolute;bottom:20px;left:20px;z-index:10}
+  #title{font-family:'Cinzel',serif;font-size:12px;letter-spacing:0.35em;opacity:0.2;text-transform:uppercase}
+  #subtitle{font-size:8px;letter-spacing:0.2em;opacity:0.1;margin-top:2px;text-transform:uppercase}
+  #status{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);font-size:9px;letter-spacing:0.18em;opacity:0.35;text-align:center;text-transform:uppercase;z-index:10;font-family:'Cinzel',serif;white-space:nowrap;max-width:80vw;overflow:hidden;text-overflow:ellipsis}
+
+  #vol-wrap{position:absolute;bottom:20px;right:20px;display:flex;align-items:center;gap:10px;z-index:10}
+  .vol-label{font-family:'Cinzel',serif;font-size:8px;letter-spacing:0.15em;opacity:0.2;text-transform:uppercase}
+  input[type=range]{-webkit-appearance:none;width:80px;height:1px;background:rgba(255,106,0,0.2);border-radius:1px;outline:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:8px;height:8px;border-radius:50%;background:rgba(255,160,0,0.6);box-shadow:0 0 8px rgba(255,80,0,0.5);cursor:pointer}
+
+  /* ─── Overlay ─── */
+  #start-overlay{position:absolute;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(6,6,11,0.95);cursor:pointer;transition:opacity 0.6s}
+  #start-overlay.hidden{opacity:0;pointer-events:none}
+  #start-overlay h1{font-family:'Cinzel',serif;font-size:28px;letter-spacing:0.4em;opacity:0.7;margin-bottom:12px}
+  #start-overlay p{font-size:11px;letter-spacing:0.15em;opacity:0.3}
+</style>
+</head>
+<body>
+<div id="container">
+  <video id="videoEl" autoplay playsinline muted></video>
+  <canvas id="canvas"></canvas>
+
+  <div id="start-overlay">
+    <h1>PYREFEY</h1>
+    <p>Click anywhere to ignite</p>
+  </div>
+
+  <div id="controls">
+    <div class="ctrl-row">
+      <span class="ctrl-label">Fingers</span>
+      <span class="channel" style="color:#ffaa2a"><span class="dot" style="background:#ffaa2a"></span>Index · Sigil</span>
+      <span class="channel" style="color:#ff5533"><span class="dot" style="background:#ff5533"></span>Middle · Ember</span>
+      <span class="channel" style="color:#bb66ff"><span class="dot" style="background:#bb66ff"></span>Ring · Crystal</span>
+      <span class="channel" style="color:#44ee88"><span class="dot" style="background:#44ee88"></span>Pinky · Howl</span>
+    </div>
+    <div class="ctrl-row" id="scale-row">
+      <span class="ctrl-label">Tuning</span>
+      <button class="pill active" data-scale="hearth">Hearth</button>
+      <button class="pill"        data-scale="shadow">Shadow</button>
+      <button class="pill"        data-scale="ritual">Ritual</button>
+      <button class="pill"        data-scale="arcane">Arcane</button>
+      <button class="pill"        data-scale="eastern">Eastern</button>
+    </div>
+    <div class="ctrl-row" id="root-row">
+      <span class="ctrl-label">Root</span>
+      <button class="pill active" data-root="130.81" data-name="C">C</button>
+      <button class="pill"        data-root="146.83" data-name="D">D</button>
+      <button class="pill"        data-root="164.81" data-name="E">E</button>
+      <button class="pill"        data-root="185.00" data-name="F#">F♯</button>
+      <button class="pill"        data-root="220.00" data-name="A">A</button>
+    </div>
+  </div>
+
+  <div id="legend">
+    <span><em>Pinch</em> seal finger to thumb — conjure</span><br>
+    <span><em>Release</em> break the seal — silence</span><br>
+    <span><em>X Axis</em> pitch — low realm ← → high realm</span><br>
+    <span><em>Y Axis</em> rise for power, descend to whisper</span><br>
+    <span><em>Z Depth</em> lean in — open filter, drive resonance, flood reverb</span><br>
+    <span><em>Left</em> bass invocation · <em>Right</em> melody casting</span><br>
+    <span style="margin-top:8px;display:inline-block;opacity:0.5"><em>Each finger</em> channels a different voice</span>
+  </div>
+
+  <div id="title-block">
+    <div id="title">Pyrefey</div>
+    <div id="subtitle">Fire Wizardry · Fey Magik · v2.1</div>
+  </div>
+
+  <div id="status">Awaiting ignition…</div>
+
+  <div id="vol-wrap">
+    <span class="vol-label">Intensity</span>
+    <input type="range" id="vol" min="0" max="100" value="70">
+  </div>
+</div>
+
+<script type="module">
+import { HandySynth, SCALES } from '../../handysynth.js';
+import { createPyrefeyVariant } from './pyrefey.js';
+
+const variant = createPyrefeyVariant();
+
+const hs = new HandySynth({
+  variant,
+  options: {
+    defaultScale: 'pentatonic',
+    rootFreq:      130.81,
+    reversePitch:  true,
+    leftOctaveShift:  0,
+    rightOctaveShift: 1,
+    masterVolume:  0.7,
+  },
+});
+
+hs.mount(document.getElementById('container'), {
+  videoEl:   document.getElementById('videoEl'),
+  canvasEl:  document.getElementById('canvas'),
+  statusEl:  document.getElementById('status'),
+  overlayEl: document.getElementById('start-overlay'),
+});
+
+// ── Scale buttons ──
+const scaleMap = variant.scales;  // { hearth: 'pentatonic', ... }
+
+document.getElementById('scale-row').addEventListener('click', e => {
+  const btn = e.target.closest('[data-scale]');
+  if (!btn) return;
+  const name = btn.dataset.scale;
+  const coreScale = scaleMap[name] || name;
+  hs.setScale(coreScale);
+  btn.parentElement.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+});
+
+// ── Root buttons ──
+document.getElementById('root-row').addEventListener('click', e => {
+  const btn = e.target.closest('[data-root]');
+  if (!btn) return;
+  hs.setRoot(parseFloat(btn.dataset.root));
+  btn.parentElement.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+});
+
+// ── Volume ──
+document.getElementById('vol').addEventListener('input', e => {
+  hs.setVolume(e.target.value / 100);
+});
+</script>
+</body>
+</html>
