@@ -7,7 +7,7 @@ Living document. Update this when artifacts are created, decisions are made, or 
 ### Core Platform
 | File | Status | Description |
 |------|--------|-------------|
-| `handysynth.js` | v1.0 stable | Gesture detection, hand tracking, pitch mapping, startup orchestration |
+| `handysynth.js` | v1.1 stable | Gesture detection, hand tracking, pitch mapping, startup orchestration. iOS Safari audio fix applied. |
 | `CLAUDE.md` | Current | Architecture spec, callback interface, constructor options, constraints |
 
 ### Variants
@@ -66,6 +66,7 @@ Living document. Update this when artifacts are created, decisions are made, or 
 
 | Conversation | Topics | Key Outputs |
 |-------------|--------|-------------|
-| Origin (this one) | AirSynth v1 → Pyrefey v2.1 → HandySynth platform refactor | `handysynth.js`, `pyrefey.js`, variant template, CLAUDE.md, onboarding.md, deploy package, roadmap |
+| Origin | AirSynth v1 → Pyrefey v2.1 → HandySynth platform refactor | `handysynth.js`, `pyrefey.js`, variant template, CLAUDE.md, onboarding.md, deploy package, roadmap |
+| 2026-05-29 | v1.1: iOS Safari audio fix + 13-item polish standard | `VARIANT-POLISH.md`, `Safari-Silence-Fix.md`, CHANGELOG.md, v1.1 core patch, 12 catalog variants patched |
 
 *Update this table as new conversations produce artifacts or decisions.*

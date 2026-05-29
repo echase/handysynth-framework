@@ -1,5 +1,5 @@
 /**
- * HandySynth Core Platform v1.0
+ * HandySynth Core Platform v1.1
  *
  * Reusable hand-tracking → gesture → audio/visual pipeline.
  * Variants implement the callback interface to build instruments.
@@ -262,10 +262,14 @@ export class HandySynth {
     // Status element
     this._statusEl = domRefs.statusEl || null;
 
-    // Overlay — if provided externally, just attach listener
+    // Overlay — if provided externally, attach gesture listeners.
+    // touchend + pointerup capture mobile taps reliably on iOS Safari.
+    // The _startCalled guard prevents double-fire when all three events land.
     const overlayEl = domRefs.overlayEl;
     if (overlayEl) {
-      overlayEl.addEventListener('click', () => this._start(overlayEl), { once: true });
+      overlayEl.addEventListener('touchend', (e) => { e.preventDefault(); this._start(overlayEl); }, { once: true, passive: false });
+      overlayEl.addEventListener('pointerup', () => this._start(overlayEl), { once: true });
+      overlayEl.addEventListener('click',    () => this._start(overlayEl), { once: true });
     }
 
     // Resize
@@ -284,11 +288,20 @@ export class HandySynth {
   // ── Internal startup ─────────────────────────────────────────
 
   async _start(overlayEl) {
+    if (this._startCalled) return;
+    this._startCalled = true;
     if (overlayEl) overlayEl.classList.add('hidden');
 
-    // 1. Audio
+    // 1. Audio — must await so iOS Safari fully unlocks WebAudio
     this._setStatus('Igniting audio…');
-    this._initAudio();
+    await this._initAudio();
+
+    if (this._audioCtx.state !== 'running') {
+      this._setStatus('Audio blocked — tap again or check silent mode');
+      this._startCalled = false;
+      if (overlayEl) overlayEl.classList.remove('hidden');
+      return;
+    }
 
     // 2. Notify variant
     const W = this._canvas.width, H = this._canvas.height;
@@ -316,7 +329,7 @@ export class HandySynth {
     this._processFrame();
   }
 
-  _initAudio() {
+  async _initAudio() {
     this._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
     this._masterGain = this._audioCtx.createGain();
@@ -328,6 +341,20 @@ export class HandySynth {
 
     this._masterGain.connect(this._analyser);
     this._analyser.connect(this._audioCtx.destination);
+
+    // iOS Safari requires an explicit resume() during the trusted user gesture.
+    // Calling it here (inside _start, which is called from the overlay tap)
+    // is the only reliable way to unlock WebAudio on iPhone/iPad.
+    if (this._audioCtx.state !== 'running') {
+      await this._audioCtx.resume();
+    }
+
+    // Silent warm-up buffer — fully unlocks the audio graph on iOS
+    const buf = this._audioCtx.createBuffer(1, 1, this._audioCtx.sampleRate);
+    const src = this._audioCtx.createBufferSource();
+    src.buffer = buf;
+    src.connect(this._audioCtx.destination);
+    src.start(0);
   }
 
   async _initMediaPipe() {
@@ -432,7 +459,7 @@ export class HandySynth {
       return;
     }
 
-    if (this._audioCtx && this._audioCtx.state === 'suspended') this._audioCtx.resume();
+    // Audio unlock is handled in _initAudio() during the user gesture. Do not resume here (iOS).
 
     // Normalize
     const hands = [];

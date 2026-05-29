@@ -89,6 +89,7 @@ new HandySynth({
 2. Implement callbacks in `variant.js`
 3. Theme `index.html` (styles, controls, overlay)
 4. Wire controls to `hs.setScale()`, `hs.setRoot()`, `hs.setVolume()`
+5. **Apply all items from `VARIANT-POLISH.md`** — 13 mandatory UX refinements (motion smoothing, pause, help, immersive mode, stuck-note prevention, etc.) that every variant must include
 
 The audio graph topology is up to you. The core provides `masterGain` → `analyser` → `destination`. Connect your audio into `masterGain`. If you need reverb, compression, or other bus effects, build them in `onInit` and route through `masterGain`.
 
@@ -97,7 +98,7 @@ The audio graph topology is up to you. The core provides `masterGain` → `analy
 - **HTTPS required** — getUserMedia blocks on plain HTTP
 - **ES modules** — all JS uses `import/export`, served via `<script type="module">`
 - **No build step** — files served directly, CDN dependencies loaded at runtime
-- **Click-to-start** — AudioContext requires user gesture; overlay handles this
+- **iOS Safari audio unlock** — `_initAudio()` is `async` (v1.1+). `_start()` must `await` it. The resume and silent warm-up buffer must execute inside the direct user gesture callback — calling `audioCtx.resume()` from a `requestAnimationFrame` loop is too late for iOS and will silently fail. Never move the resume back to the frame loop.
 - **MediaPipe CDN**: `@mediapipe/tasks-vision@0.10.18` pinned on jsdelivr; model from `storage.googleapis.com`
 
 ## Pyrefey Variant Details
