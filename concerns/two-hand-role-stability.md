@@ -92,5 +92,19 @@ N-A unless drumspace assigns distinct per-hand banks — confirm; its hits are l
 - **⚠ human review — drift:** drift pans the two hands hard L/R for stereo. A label swap would flip the stereo
   image, but whether that's "distinct roles" or "harmless symmetry" is a judgment call. Flagged for your ear.
 
+## ⚠ Canonical-source drift (flagged 2026-06-04)
+
+The canonical file `air-guitar/index.html` has **uncommitted working-tree WIP** that rewrites `resolveRoles`:
+the committed version uses an **energy-counter** with a `commit` hysteresis counter (`other.energy >
+strumSlot.energy*1.6 ... if(++commit>7)`); the WIP replaces it with the simpler **y-margin** form
+(`if(other.y > strumSlot.y + 0.03) strumSlot = other`) — which is what the *Canonical source* snippet above
+already documents. So the doc currently matches the WIP, not the committed file.
+
+`applied@v1` still holds for air-guitar and syrinx: both assign roles by *behavior*, not the handedness label,
+so both satisfy the intent regardless of which hysteresis mechanism wins. But **before batch 4** (propagating
+to theremin + stellar-conductor) decide which is the template — energy-counter (committed) or y-margin (WIP +
+doc) — and reconcile the snippet to the chosen one. This is exactly the map-vs-file drift the ledger exists to
+catch.
+
 ## Deferrals
 _none yet — runecatch is needs-patch/defer, kept in the matrix rather than formally deferred._
