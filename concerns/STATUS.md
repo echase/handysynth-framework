@@ -25,7 +25,7 @@ grep -l "<variant>:.*\(deferred\|unknown\|needs-patch\)" concerns/*.md
 |---------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|
 | one-euro-smoothing | ▲ | ▲ | ▲ | ▲ | ▲ | ✓v2 | ▲ | ▲ | n/a | ▲ | n/a | ▲ | def | ▲ |
 | velocity-from-history | ▲ | ✓ | ▲ | n/a | ▲ | n/a | n/a | ▲ | def | ✓ | ✓ | ▲ | n/a | n/a |
-| swap-and-pop-particles | ▲ | ✓v2 | ▲ | ▲ | ▲ | ▲ | ▲ | ▲ | ▲ | ▲ | ▲ | ▲ | ▲ | ▲ |
+| swap-and-pop-particles | ✓ | ✓v2 | ✓ | ✓ | ✓ | n/a | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | two-hand-role-stability | ✓v1 | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | ▲ | ▲ | ▲ | ✓v1 | ▲ |
 
 Columns: airg=air-guitar · augu=augury · crys=crystal-harp · drif=drift · drum=drumspace · fing=finger-guns ·
@@ -38,7 +38,7 @@ syri=syrinx · ther=theremin.
 |---------|:-------:|:-----------:|:---:|:--------:|
 | one-euro-smoothing | 1 | 10 | 2 | 1 |
 | velocity-from-history | 3 | 5 | 5 | 1 |
-| swap-and-pop-particles | 1 | 13 | 0 | 0 |
+| swap-and-pop-particles | 13 ✅ | 0 | 1 | 0 |
 | two-hand-role-stability | 2 | 4 | 8 | 0 |
 
 `needs-patch` here is "applicable + not yet done" — it splits into **execute-now** and **defer** in the patch
@@ -49,8 +49,8 @@ patch queue below for execution order.
 
 Propose-only — no edits land until approved. Ordered lowest-risk → highest-judgment:
 
-1. **swap-and-pop-particles** — 13 variants, pure perf, zero behavior change. Warm-up batch. (Skip pulse's
-   order-bound `vizQueue`; convert its other arrays.)
+1. ~~**swap-and-pop-particles**~~ — ✅ **DONE 2026-06-04** (13-agent fan-out, 38 loops; finger-guns n/a;
+   pulse `vizQueue` preserved). Human load-check still owed.
 2. **velocity-from-history / execute** — drumspace, lumen. Clean adds; reconcile drumspace's bespoke delta.
 3. **one-euro-smoothing** — 10 variants. Lead with **theremin** and **crystal-harp** (continuous pitch → most
    audible win). augury needs minified-token matching.

@@ -6,20 +6,20 @@ acceptance: No behavior change — same particles, same visuals. Frame rate hold
 detection: Search particle update loops for `.splice(` inside per-frame ticks. Presence of `arr.splice(i, 1)` in a draw/tick loop = needs-patch. Loops already using `arr[i] = arr[arr.length-1]; arr.pop()` = applied.
 applicability: Any variant maintaining particle/effect arrays mutated every frame (birds, notes, sparks, ripples, trails, shocks). N-A for variants with no per-frame particle arrays.
 status:
-  air-guitar: needs-patch
+  air-guitar: applied
   augury: applied@v2
-  crystal-harp: needs-patch
-  drift: needs-patch
-  drumspace: needs-patch
-  finger-guns: needs-patch
-  fireflies: needs-patch
-  lumen: needs-patch
-  pulse: needs-patch
-  runecatch: needs-patch
-  stellar-conductor: needs-patch
-  synesthesia: needs-patch
-  syrinx: needs-patch
-  theremin: needs-patch
+  crystal-harp: applied
+  drift: applied
+  drumspace: applied
+  finger-guns: n/a
+  fireflies: applied
+  lumen: applied
+  pulse: applied
+  runecatch: applied
+  stellar-conductor: applied
+  synesthesia: applied
+  syrinx: applied
+  theremin: applied
 ---
 
 ## Canonical source
@@ -58,5 +58,39 @@ Identical change — pure JS array idiom. No class/audio coupling.
   removed with `splice` — broadest concern in the ledger. Recommended warm-up batch.
 - **applied (1):** augury (canonical source, all six arrays already swap-and-pop).
 - **⚠ order-sensitive exception — pulse:** pulse's `vizQueue` (≈ line 1187) is timing-ordered; its `splice`
-  must stay. Convert only pulse's order-free arrays (SHOCKS ≈ line 687, CURSOR, toasts). Every other variant's
+  must stay. Convert only pulse's order-free arrays (SHOCKS ≈ line 687, CURSOR). Every other variant's
   effect arrays are draw-order-irrelevant and safe to convert wholesale.
+
+## Applied (2026-06-04 batch — 13-agent parallel fan-out)
+
+38 per-frame removal loops converted across 12 variants. Remaining-`splice` counts verified per file (matches
+each agent report); air-guitar idiom spot-checked; pulse `vizQueue.splice` confirmed intact @1187.
+
+| variant | converted | left-as-is |
+|---|---|---|
+| air-guitar | 3 (SPARKS, NOTES, CURSOR_PARTICLES) | toasts |
+| crystal-harp | 5 (MUTE_PARTICLES, SHIMMER, RIPPLES, recentNotes, CURSOR_PARTICLES) | toasts |
+| drift | 4 (MIST, SHIMMER, BREATH, CURSOR_PARTICLES) | toasts |
+| drumspace | 4 (FX_BURSTS, FX_RIPPLES, FX_CHOKES, CURSOR_PARTICLES) | — |
+| fireflies | 3 (sparks, noteLabels, CURSOR_PARTICLES) | toasts |
+| lumen | 2 (blooms, CURSOR_PARTICLES) | toasts |
+| pulse | 2 (SHOCKS, CURSOR_PARTICLES) | **vizQueue** + toasts |
+| runecatch | 7 (hit/miss/trail particles, gradeFlashes, sigils, laneNotes, CURSOR_PARTICLES) | toasts |
+| stellar-conductor | 3 (RIPPLES, SPARKS, CURSOR_PARTICLES) | toasts |
+| synesthesia | 3 (marks×2, CURSOR_PARTICLES) | toasts |
+| syrinx | 1 (cursor) | — |
+| theremin | 1 (CURSOR_PARTICLES) | toasts |
+
+**Cross-variant invariant — `toasts` is always order-bound.** Every variant with a toast queue computes each
+toast's Y as `H*0.85 - (toasts.length-1-i)*30` — the array index *is* the stack position, so swap-and-pop
+would teleport live toasts. All 11 variants correctly skipped it. **Future sweeps: `toasts` is permanently
+n/a for this concern; do not re-flag.**
+
+**finger-guns = n/a (not needs-patch):** it has zero `splice` — it removes dead particles via `.filter()`
+reassignment (`game.feathers`/`comicTexts`/`scorePopups`). No splice anti-pattern to convert. Note for a
+*separate* future concern: per-frame `.filter()` reallocates the whole array each frame (O(n) + a fresh
+allocation), which swap-and-pop-in-place would also avoid — but that is a different transform, out of scope
+here.
+
+**Verification still owed (human):** load each edited variant, confirm no console errors and visual parity
+(same particles, no stutter). Pure-perf change — no audio/gesture acceptance test needed.
