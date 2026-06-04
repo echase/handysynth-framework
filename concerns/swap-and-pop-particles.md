@@ -6,20 +6,20 @@ acceptance: No behavior change — same particles, same visuals. Frame rate hold
 detection: Search particle update loops for `.splice(` inside per-frame ticks. Presence of `arr.splice(i, 1)` in a draw/tick loop = needs-patch. Loops already using `arr[i] = arr[arr.length-1]; arr.pop()` = applied.
 applicability: Any variant maintaining particle/effect arrays mutated every frame (birds, notes, sparks, ripples, trails, shocks). N-A for variants with no per-frame particle arrays.
 status:
-  air-guitar: unknown
+  air-guitar: needs-patch
   augury: applied@v2
-  crystal-harp: unknown
-  drift: unknown
-  drumspace: unknown
-  finger-guns: unknown
-  fireflies: unknown
-  lumen: unknown
-  pulse: unknown
-  runecatch: unknown
-  stellar-conductor: unknown
-  synesthesia: unknown
-  syrinx: unknown
-  theremin: unknown
+  crystal-harp: needs-patch
+  drift: needs-patch
+  drumspace: needs-patch
+  finger-guns: needs-patch
+  fireflies: needs-patch
+  lumen: needs-patch
+  pulse: needs-patch
+  runecatch: needs-patch
+  stellar-conductor: needs-patch
+  synesthesia: needs-patch
+  syrinx: needs-patch
+  theremin: needs-patch
 ---
 
 ## Canonical source
@@ -51,3 +51,12 @@ Identical change — pure JS array idiom. No class/audio coupling.
 - Only matters where particle order is irrelevant (true for all known effect arrays). Do NOT apply to arrays
   whose draw order is load-bearing (z-sorted layers) — none known, but the sweep should confirm.
 - `arch-sensitive: no`. Lowest-risk item in the backlog; good warm-up for the sweep.
+
+## Sweep findings (2026-06-04)
+
+- **needs-patch (13):** every variant except augury maintains at least one per-frame particle/effect array
+  removed with `splice` — broadest concern in the ledger. Recommended warm-up batch.
+- **applied (1):** augury (canonical source, all six arrays already swap-and-pop).
+- **⚠ order-sensitive exception — pulse:** pulse's `vizQueue` (≈ line 1187) is timing-ordered; its `splice`
+  must stay. Convert only pulse's order-free arrays (SHOCKS ≈ line 687, CURSOR, toasts). Every other variant's
+  effect arrays are draw-order-irrelevant and safe to convert wholesale.

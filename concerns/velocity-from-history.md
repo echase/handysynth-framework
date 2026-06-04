@@ -6,20 +6,20 @@ acceptance: A fast pinch/strike sounds harder (higher attack/velocity) than a sl
 detection: Search for `posHistory` / `tipYHist` / `distHistory` / per-voice velocity buffers. A variant with its OWN buffer impl is `needs-patch` (conform to canonical); a variant with no velocity sensing and a continuous attack is `needs-patch`; a variant already on the canonical helper is `applied`.
 applicability: All variants where note onset has an attack/velocity parameter (melodic, percussive, plucked). N-A for purely drone/continuous variants with no discrete onset.
 status:
-  air-guitar: unknown
-  augury: unknown
-  crystal-harp: unknown
-  drift: unknown
-  drumspace: unknown
-  finger-guns: unknown
-  fireflies: unknown
-  lumen: unknown
-  pulse: unknown
-  runecatch: unknown
-  stellar-conductor: unknown
-  synesthesia: unknown
-  syrinx: unknown
-  theremin: unknown
+  air-guitar: needs-patch
+  augury: applied
+  crystal-harp: needs-patch
+  drift: n/a
+  drumspace: needs-patch
+  finger-guns: n/a
+  fireflies: n/a
+  lumen: needs-patch
+  pulse: deferred
+  runecatch: applied
+  stellar-conductor: applied
+  synesthesia: needs-patch
+  syrinx: n/a
+  theremin: n/a
 ---
 
 ## Relationship to VARIANT-POLISH
@@ -72,5 +72,19 @@ canonical `velAt`.
 - A variant keeping a justified bespoke window (e.g. pulse's Y-only strike) may `defer` with that reason
   rather than force-conform — note it in Deferrals.
 
+## Sweep findings (2026-06-04)
+
+- **applied (3):** augury & stellar-conductor (canonical reference impls); runecatch carries its own divergent
+  buffer that already delivers velocity — counts as applied but should conform to the canonical helper on its
+  next touch (tracked as a soft divergence, not a blocking patch).
+- **needs-patch / execute (2):** lumen and drumspace — discrete onsets with no velocity sensing today; clean,
+  high-value adds. drumspace already senses impact and should replace its bespoke delta with `velAt`.
+- **needs-patch / defer (3):** synesthesia, crystal-harp, air-guitar — would benefit but the routing into each
+  engine's attack is non-trivial; queue behind the execute set.
+- **n/a (5):** finger-guns, theremin, drift, fireflies, syrinx — continuous/drone or no discrete attack
+  parameter to drive.
+
 ## Deferrals
-_none yet_
+
+- **pulse** — justified bespoke `tipYHist` Y-only strike window. Pulse is a vertical-strike percussion model;
+  a 2-axis `velAt` would add horizontal noise to a deliberately 1-axis gesture. Keep the Y-only buffer.

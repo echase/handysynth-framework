@@ -7,19 +7,19 @@ detection: Search for reliance on `handedness` / `category` / `=== 'Left'` / `==
 applicability: ONLY variants where the two hands have distinct roles. N-A where each hand is independent and symmetric (same mapping regardless of which hand) — there a label swap is harmless. The sweep must classify each variant's two-hand model before deciding.
 status:
   air-guitar: applied@v1
-  augury: unknown
-  crystal-harp: unknown
-  drift: unknown
-  drumspace: unknown
-  finger-guns: unknown
-  fireflies: unknown
-  lumen: unknown
-  pulse: unknown
-  runecatch: unknown
-  stellar-conductor: unknown
-  synesthesia: unknown
-  syrinx: unknown
-  theremin: unknown
+  augury: n/a
+  crystal-harp: n/a
+  drift: n/a
+  drumspace: n/a
+  finger-guns: n/a
+  fireflies: n/a
+  lumen: n/a
+  pulse: n/a
+  runecatch: needs-patch
+  stellar-conductor: needs-patch
+  synesthesia: needs-patch
+  syrinx: applied@v1
+  theremin: needs-patch
 ---
 
 ## The bug
@@ -74,5 +74,23 @@ N-A unless drumspace assigns distinct per-hand banks — confirm; its hits are l
 - `arch-sensitive: yes` — depends on each variant's hand-tracking structure and what distinguishes the roles.
 - For genuinely symmetric variants, the sweep should mark `n/a` with a one-line reason, not patch them.
 
+## Sweep findings (2026-06-04)
+
+- **applied (2):** air-guitar (canonical sticky-slot pattern) and **syrinx**, which independently solved the
+  same bug a simpler way — it **sorts the two hands by X position** each frame instead of trusting the label.
+  For variants whose roles map cleanly to left-vs-right screen position, syrinx's sort is a lighter alternative
+  to air-guitar's energy-tracked slots. Worth promoting as a second canonical pattern.
+- **needs-patch / execute (2):** **theremin** (one hand pitch, other volume) and **stellar-conductor**
+  (left=density, right=tempo) — both select role by `handedness`; a label flip mid-performance swaps the two
+  control axes. Real latent bugs, highest value, recommend executing.
+- **needs-patch / verify (1):** synesthesia — asymmetric two-hand mapping, latent but lower-exposure; confirm
+  reproduction before patching.
+- **needs-patch / defer (1):** runecatch — has a two-hand path but the role distinction is weak; defer behind
+  theremin/stellar-conductor.
+- **n/a (7):** augury, crystal-harp, drift, drumspace, finger-guns, fireflies, lumen, pulse — each hand is
+  independent and symmetric (same mapping regardless of which hand), so a label swap is harmless.
+- **⚠ human review — drift:** drift pans the two hands hard L/R for stereo. A label swap would flip the stereo
+  image, but whether that's "distinct roles" or "harmless symmetry" is a judgment call. Flagged for your ear.
+
 ## Deferrals
-_none yet_
+_none yet — runecatch is needs-patch/defer, kept in the matrix rather than formally deferred._

@@ -6,20 +6,20 @@ acceptance: Holding a steady pinch produces a rock-stable value (no warble); fas
 detection: Search for `class OneEuro` / `euroX` / `mincutoff`. Absent = still on fixed-k EMA (PITCH_SMOOTH_K etc.) → needs-patch.
 applicability: All variants that smooth hand landmarks before mapping to audio/visual params — i.e. every instrument variant. N-A only if a variant deliberately uses raw landmarks (none known).
 status:
-  air-guitar: unknown
-  augury: unknown
-  crystal-harp: unknown
-  drift: unknown
-  drumspace: unknown
+  air-guitar: needs-patch
+  augury: needs-patch
+  crystal-harp: needs-patch
+  drift: needs-patch
+  drumspace: needs-patch
   finger-guns: applied@v2
-  fireflies: unknown
-  lumen: unknown
-  pulse: unknown
-  runecatch: unknown
-  stellar-conductor: unknown
-  synesthesia: unknown
-  syrinx: unknown
-  theremin: unknown
+  fireflies: needs-patch
+  lumen: needs-patch
+  pulse: n/a
+  runecatch: needs-patch
+  stellar-conductor: n/a
+  synesthesia: needs-patch
+  syrinx: deferred
+  theremin: needs-patch
 ---
 
 ## Relationship to VARIANT-POLISH
@@ -80,3 +80,18 @@ Same class; store instances in the per-voice/per-finger state object instead of 
 - `arch-sensitive: no` for the filter itself; only the per-voice state plumbing varies.
 - The sweep should confirm the variant currently uses fixed-k EMA (detection) before patching, and re-tune
   per variant since pitch axes need more smoothing than volume/trigger axes.
+
+## Sweep findings (2026-06-04)
+
+- **needs-patch (10):** air-guitar, augury, crystal-harp, drift, drumspace, fireflies, lumen, runecatch,
+  synesthesia, theremin — all on fixed-k EMA. augury is class-minified (anchor strings have no spaces — patch
+  must match minified tokens). theremin & crystal-harp are continuous-pitch → highest payoff.
+- **n/a (2):** pulse and stellar-conductor smooth percussion/conducting signals where adaptive landmark
+  smoothing doesn't apply (no held-pitch warble to kill).
+- **applied (1):** finger-guns (canonical source).
+
+## Deferrals
+
+- **syrinx** — bespoke architecture with a hand-tuned manual EMA already in place. Conforming would mean
+  rewriting a working bespoke smoother for no audible gain. Revisit only if syrinx is refactored onto the
+  HandySynth core.
