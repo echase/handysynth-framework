@@ -45,6 +45,9 @@ export class EffortCurves {
   }
 
   feed(points, now) {
+    // Per-frame model, intentionally NOT time-normalized: vx/vy/speed are raw
+    // position deltas per feed() call, assuming a fixed-cadence tracking loop.
+    // dt is reserved for a future time-normalized mode and unused today.
     const dt = this._lastNow === null ? 33 : Math.max(1, now - this._lastNow);
     this._lastNow = now;
     const onsets = [];
