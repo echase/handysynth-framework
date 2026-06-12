@@ -21,7 +21,7 @@ Living document. Update this when artifacts are created, decisions are made, or 
 | File | Audience | Description |
 |------|----------|-------------|
 | `CLAUDE.md` | Claude / devs | Architecture reference — the primary context doc |
-| `VARIANT-POLISH.md` | Claude / devs | The 13-item mandatory UX polish standard |
+| `VARIANT-POLISH.md` | Claude / devs | The 16-item mandatory UX polish standard (v1.2) |
 | `VARIANT-SCREENING.md` | Claude / devs | Pre-pipeline screening rubric for variants landing in `drop/` — 3 tiers + ranked-refinement report |
 | `POLISH-FANOUT-HANDOFF.md` | Claude / devs | Serial runbook for applying the polish standard across remaining variants, folding learnings into the standard each pass, operator-gated |
 | `README.md` | Humans | Quick-start and project overview |

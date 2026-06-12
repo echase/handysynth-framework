@@ -42,7 +42,7 @@ built the same thing, that is the strongest signal it belongs in the shared base
 | B2 | Parametric voice class (FM "species" pattern) | augury | timbre variety without N engines |
 | B3 | Musicality scoring (consonance/rhythm/dynamics feedback) | runecatch | strong differentiator, high effort |
 | B4 | Screen-shake + border-glow impact feedback | finger-guns | percussion/impact variants |
-| B5 | relationshipFrame: two-body relational features (distance, mirroring, near-touch, shared stillness) above paired BodyStates | future two-player embra mode — relational layer sits above individual BodyState objects, never inside pose tracking | medium |
+| B5 | relationshipFrame: two-body relational features (distance, mirroring, near-touch, shared stillness) above paired BodyStates | embra (future two-player mode) | relational layer sits above individual BodyState objects, never inside pose tracking; see specs/2026-06-12-embra-relational-direction.md |
 
 ## Promote to core (`handysynth.js`) — not per-variant patches
 
