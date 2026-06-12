@@ -32,6 +32,7 @@ built the same thing, that is the strongest signal it belongs in the shared base
 | A3 | Glide / portamento + quantize toggle | syrinx → theremin, crystal-harp, drift | low |
 | A4 | Additive particle render + radial-gradient glow halos | pulse, lumen, fireflies → visual variants | low–med |
 | A5 | Reverb: early reflections + stereo diffusion, no convolver file | augury, synesthesia → any | med |
+| A6 | Effort-curve features (energy/stillness/onsets) as expression axes | foundation `effort-curves.js` (from embra) → all gesture variants | low |
 
 ## Tier B — bigger bets (high ceiling, defer-with-trigger candidates)
 
@@ -41,12 +42,13 @@ built the same thing, that is the strongest signal it belongs in the shared base
 | B2 | Parametric voice class (FM "species" pattern) | augury | timbre variety without N engines |
 | B3 | Musicality scoring (consonance/rhythm/dynamics feedback) | runecatch | strong differentiator, high effort |
 | B4 | Screen-shake + border-glow impact feedback | finger-guns | percussion/impact variants |
+| B5 | relationshipFrame: two-body relational features (distance, mirroring, near-touch, shared stillness) above paired BodyStates | future two-player embra mode — relational layer sits above individual BodyState objects, never inside pose tracking | medium |
 
 ## Promote to core (`handysynth.js`) — not per-variant patches
 
 | Candidate | Source | Note |
 |-----------|--------|------|
-| Pose-landmarker fusion (elbow/arm anchoring) | finger-guns | optional `PoseLandmarker` alongside `HandLandmarker`; land once in core, variants opt in |
+| Pose-landmarker fusion (elbow/arm anchoring) | finger-guns, **embra** | optional `PoseLandmarker` alongside `HandLandmarker`; embra is the full-body reference implementation (isolated try/catch, lite model, anatomical identity); land once in core, variants opt in |
 | (One-Euro smoothing, velocity-from-history) | — | could centralize in core instead of patch-and-track, if preferred over per-variant adoption |
 
 ## Caveats

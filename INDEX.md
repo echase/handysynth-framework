@@ -8,6 +8,7 @@ Living document. Update this when artifacts are created, decisions are made, or 
 | File | Status | Description |
 |------|--------|-------------|
 | `handysynth.js` | v1.1 stable | Gesture detection, hand tracking, pitch mapping, startup orchestration. iOS Safari audio fix applied. |
+| `effort-curves.js` | v0.1.0 | Landmark-agnostic effort features (energy, smoothness, stillness, onsets). Node-tested. First consumer: embra. |
 | `CLAUDE.md` | Current | Architecture spec, callback interface, constructor options, constraints |
 
 ### Variants
@@ -20,6 +21,9 @@ Living document. Update this when artifacts are created, decisions are made, or 
 | File | Audience | Description |
 |------|----------|-------------|
 | `CLAUDE.md` | Claude / devs | Architecture reference — the primary context doc |
+| `VARIANT-POLISH.md` | Claude / devs | The 13-item mandatory UX polish standard |
+| `VARIANT-SCREENING.md` | Claude / devs | Pre-pipeline screening rubric for variants landing in `drop/` — 3 tiers + ranked-refinement report |
+| `POLISH-FANOUT-HANDOFF.md` | Claude / devs | Serial runbook for applying the polish standard across remaining variants, folding learnings into the standard each pass, operator-gated |
 | `README.md` | Humans | Quick-start and project overview |
 | `onboarding.md` | Devs | Deep Pyrefey walkthrough (pre-refactor, partially outdated — audio/visual sections still accurate, gesture sections superseded by core) |
 
@@ -33,6 +37,7 @@ Living document. Update this when artifacts are created, decisions are made, or 
 | Per-finger voice identity (not switchable modes) | Each finger IS an instrument — richer simultaneous texture | Origin conversation |
 | Z-axis via exponential curves, not linear | Compensates for MediaPipe's weak Z signal; amplifies usable range, compresses noise | Origin conversation |
 | Scale signal > landmark Z for depth | 2D landmark positions have sub-pixel precision; landmark Z is learned inference with ~4 usable discrete zones | Origin conversation |
+| Effort curves over coordinates for body-scale input | Musicality is embodied — map motion qualities (energy/stillness/onsets), not joint positions; pose landmark identity is anatomical so no slot matching needed | 2026-06-11 body-motion handoff → embra |
 | Core/variant split | Gesture pipeline is reusable; audio/visuals are variant-specific. Enables fork-and-build workflow | Origin conversation — refactor discussion |
 | No build step | Files served directly, CDN dependencies at runtime. Reduces friction for forking | Origin conversation |
 
