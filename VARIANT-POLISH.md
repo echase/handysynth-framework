@@ -1,7 +1,7 @@
 # Universal Variant Polish Standard
 
-**Version:** 1.0
-**Date:** 2026-05-29
+**Version:** 1.2
+**Date:** 2026-06-06
 **Status:** Active
 **Scope:** Mandatory UX features for all HandySynth/Pyrefey variant builds
 
@@ -10,6 +10,23 @@
 ## Purpose
 
 Every variant shipped through the catalog must include these interaction refinements. They ensure a consistent, professional feel regardless of the audio engine or visual theme. When generating a new variant or upgrading an existing one, apply all items below.
+
+---
+
+## Changelog
+
+**v1.2 (2026-06-06)** — sharpened on `pulling-cliff` (first fan-out pass against the folded standard):
+- **#15 veil-ceiling clarification.** The ≤0.18 per-frame veil ceiling was being read as a blanket cap, but it only applies when chrome is *canvas-drawn* (the veil and the text dimmer multiply). Where chrome is **DOM-layered above the canvas** at a higher z-index, the veil dims the camera feed *behind* the text and does **not** stack with DOM opacity — a heavier veil that's part of the visual identity (pulling-cliff's 0.30 oscilloscope persistence trail) is fine; fix only the DOM chrome opacities. Acceptance wording sharpened in §15's Note; no new item. This resolves a false "veil over floor" gap the screen would otherwise flag on every DOM-chrome variant.
+
+**v1.1 (2026-06-05)** — prototyped on `theremin`, codified for fan-out:
+- **#6 Pause** rewritten: silence at the **master bus** (covers continuous/drone voices, which per-note-off left ringing) + **freeze the skeleton draw** + restore an intended-volume on resume.
+- **#7 Help** rewritten: **full-viewport** overlay, ≥16pt floor with scroll, hover-lit on-screen `?` **badge**, and X/Esc/backdrop/any-key dismissal.
+- **#8 Auto-pause** aligned to the master-bus mute path.
+- **#3 Cursor** sample corrected to swap-and-pop; coverage gap + bespoke-affordance caveat noted.
+- **New #14** Click-free audio ramps · **New #15** UI contrast floor · **New #16** Swap-and-pop in hot loops.
+- **Provisional P1 split:** P1 now has two tiers — **P1a single-clap-to-unpause** (universal once verified; low false-positive cost while already paused) vs **P1b double-clap-to-toggle-pause** (variant-conditional; higher false-positive risk mid-performance). A variant may adopt P1a without P1b when the layout or gesture vocabulary makes a false-pause unacceptable.
+- **Reference:** gesture-vocabulary primitives (twist / openness / depth axes) now live in `handysynth-foundation/CLAUDE.md`; pointer added below.
+- **Refined against the stellar-conductor procedure test** (before fan-out): #6 — master-bus ramp is load-bearing for autonomous/drone voices, `setPaused` is the single source of truth, full-`onFrame`-freeze counts; #7 — badge position is per-variant (clear the densest chrome corner, not always "above the legend"); #14 — mostly an audit, the usual gap is the pause; #15 — raise only what's below floor (don't blind-edit an already-OK veil).
 
 ---
 
@@ -100,7 +117,8 @@ function tickCursorParticles() {
   for (let i = CURSOR_PARTICLES.length - 1; i >= 0; i--) {
     const p = CURSOR_PARTICLES[i];
     p.x += p.vx; p.y += p.vy; p.life -= p.decay;
-    if (p.life <= 0) { CURSOR_PARTICLES.splice(i, 1); continue; }
+    // swap-and-pop (see #16) — descending loop, order irrelevant
+    if (p.life <= 0) { CURSOR_PARTICLES[i] = CURSOR_PARTICLES[CURSOR_PARTICLES.length - 1]; CURSOR_PARTICLES.pop(); continue; }
     ctx.beginPath(); ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
     ctx.fillStyle = `rgba(255,160,80,${(p.life * 0.3).toFixed(3)})`;
     ctx.fill();
@@ -109,6 +127,9 @@ function tickCursorParticles() {
 ```
 
 **Variant adaptation:** Change particle color, drift direction, and size to match the variant palette. Bird variants might use feather-drift physics; water variants might use droplet gravity.
+
+> [!warning] Coverage gap + bespoke-affordance caveat
+> Known **missing** in `finger-guns`, `pulling-cliff`, `syrinx` — sweep targets. But **verify before forcing it in**: `finger-guns` already indicates the cursor via its aim reticle. Don't clobber a variant's bespoke cursor affordance with the generic trail — mark it `n/a` with a one-line reason instead.
 
 ---
 
@@ -180,104 +201,116 @@ Object.keys(pinchState).forEach(k => {
 
 ---
 
-### 6. Spacebar Pause
+### 6. Pause (master-bus mute + freeze)
 
-**What:** Pressing spacebar immediately silences all active voices, freezes hand processing, and shows a centered pause overlay. Second press resumes.
+**What:** A single `_setPaused(bool)` path that, on pause: (1) **silences at the master bus** with a click-free ramp — covering continuous/drone voices, not just discrete note-offs; (2) **freezes hand processing AND the live skeleton draw**; (3) shows a centered overlay. On resume it ramps the master bus back to the **intended** volume (the user's slider value, not a hardcoded constant). Spacebar toggles it; the same path is reused by auto-pause (#8) and any clap-to-pause.
 
-**Why:** Players need an instant mute — doorbell rings, phone call, need to adjust something without sound.
+**Why:** The v1.0 version only called `noteOff()` on discrete voices. Any variant with a **continuous/drone voice** (openvoice tone, pad, sustained osc) kept ringing through "pause" — a real bug found on theremin. Muting the master bus is voice-count- and engine-agnostic: one ramp silences everything. Freezing the skeleton draw makes "paused" read as genuinely stopped, not just quiet.
 
-**Acceptance:** Tap spacebar mid-note → complete silence within one frame. Overlay appears. Tap again → processing resumes, overlay disappears. No audio artifacts (pops, clicks) on pause/resume.
+**Acceptance:** Pause mid-drone → **complete** silence within ~15ms, no click. Skeleton/hand overlay stops updating (frozen, not live). Resume → audio returns to the slider level (not full, not zero), no click. A continuous tone does NOT survive pause.
 
 **Implementation:**
 ```javascript
 let paused = false;
 
-document.addEventListener('keydown', (e) => {
-  if (e.code === 'Space' && !e.repeat) {
-    e.preventDefault();
-    paused = !paused;
-    if (paused) {
-      // Kill all active voices
-      Object.keys(pinchState).forEach(k => {
-        if (pinchState[k]) {
-          pinchState[k] = false;
-          if (voices[k]) voices[k].noteOff();
-        }
-      });
-      // Clear any dwell/charge state (variant-specific)
-      // e.g., Object.keys(dwellState).forEach(k => delete dwellState[k]);
-    }
+// Track the user's intended volume so resume restores it (not a constant).
+// Set this wherever the volume slider writes: this._intendedVol = v;
+// and guard the slider against un-muting while paused.
+
+function setPaused(p) {
+  paused = p;
+  if (masterGain && audioCtx) {                         // (1) master-bus mute — click-free
+    const t = audioCtx.currentTime, g = masterGain.gain;
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(g.value, t);
+    g.linearRampToValueAtTime(p ? 0 : (intendedVol ?? MASTER_VOLUME), t + (p ? 0.015 : 0.04));
   }
+  if (p) {                                               // clear discrete-voice state too
+    Object.keys(pinchState).forEach(k => {
+      if (pinchState[k]) { pinchState[k] = false; if (voices[k]) voices[k].noteOff(); }
+    });
+    // Clear any dwell/charge state (variant-specific)
+  }
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && !e.repeat) { e.preventDefault(); setPaused(!paused); }
 });
 
-// In frame processing loop — early return
+// Detection/processing loop — early return when paused
 function processFrame() {
   requestAnimationFrame(processFrame);
+  // NOTE: if clap-to-pause is enabled, run the clap detector BEFORE this gate (see Provisional).
   if (paused) return;
   // ... normal processing ...
 }
 
-// In draw loop — render pause overlay
+// Draw loop — (2) freeze the skeleton when paused; (3) overlay
+if (!paused) drawSkeleton(ctx, W, H, hands);            // live hands frozen on pause
 if (paused) {
-  ctx.fillStyle = 'rgba(6,6,11,0.5)';
-  ctx.fillRect(0, 0, W, H);
-  ctx.font = '24px Cinzel, serif';
-  ctx.textAlign = 'center';
-  ctx.fillStyle = 'rgba(255,160,0,0.6)';
-  ctx.fillText('PAUSED', W / 2, H / 2);
-  ctx.font = '10px DM Mono, monospace';
-  ctx.fillStyle = 'rgba(232,213,181,0.3)';
-  ctx.fillText('press spacebar to resume', W / 2, H / 2 + 30);
+  ctx.fillStyle = 'rgba(6,6,11,0.5)'; ctx.fillRect(0, 0, W, H);
+  ctx.font = '24px Cinzel, serif'; ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(255,160,0,0.6)'; ctx.fillText('PAUSED', W / 2, H / 2);
+  ctx.font = '10px DM Mono, monospace'; ctx.fillStyle = 'rgba(232,213,181,0.45)';
+  ctx.fillText('press spacebar to resume', W / 2, H / 2 + 30);   // append "or clap" iff P1a/P1b enabled (single clap always suffices here)
   ctx.textAlign = 'start';
 }
 ```
 
-**Note:** The draw loop should NOT freeze — particles should keep fading, background can dim. Only hand processing and note triggering pause.
+**Notes:**
+- **The master-bus ramp is load-bearing; the `pinchState` clear is belt-and-suspenders.** For variants whose voices are **not** pinch-driven — autonomous ensembles, drones, sequencers/schedulers that play with hands down — the note-off loop silences *nothing*. Only the master-bus ramp stops them. Lead with the ramp; never assume note-off covers the audio.
+- **`setPaused` is the single source of truth.** Pause logic tends to sprawl across sites — the spacebar keydown, auto-pause (#8), a scheduler gate inside `onFrame`. Every place that flips `paused` must call `setPaused()`; don't inline a second voice-kill anywhere.
+- **Freeze:** if the variant already early-returns from `onFrame` when paused, the skeleton freeze is *already satisfied* — don't "fix" a full freeze into a partial one. Otherwise: particles/background may keep animating; only **hand processing, note triggering, and the live skeleton** must freeze.
+- The master-bus ramp uses the click-free idiom of #14; never set `gain.value = 0` directly.
 
 ---
 
-### 7. Help Overlay (? or / Key)
+### 7. Help Overlay (full-viewport, badge + ? / key)
 
-**What:** Pressing `?` or `/` toggles a centered, semi-transparent help panel showing controls and instructions. Any other keypress dismisses it.
+**What:** A **viewport-filling**, scrollable help overlay with a body-text **floor of 16pt**. Opened by typing `?` / `/` **or** clicking an always-present, **hover-lit `?` badge** on screen. Dismissed by an **X** close button, **Esc**, **backdrop click**, or **any key**.
 
-**Why:** New users need to discover controls without leaving the app. Experienced users never see it.
+**Why:** The v1.0 panel was a small centered box that capped at ~13px and had no on-screen entry point — undiscoverable on touch/large displays and unreadable when content grew. A full-screen, scrollable, min-16pt overlay with a visible badge is discoverable and legible everywhere. "Full screen" = a viewport-filling overlay, **not** the browser Fullscreen API.
 
-**Acceptance:** Press ? → help appears centered, readable, semi-transparent. Press any key → help dismisses. Help content covers: play gesture, pause, help toggle, any variant-specific controls.
+**Acceptance:** Badge is visible and lights on hover; clicking it opens help. `?`/`/` toggles it. Overlay fills the viewport; long content scrolls; body text never renders below 16pt. X, Esc, backdrop, and any key all dismiss. Badge sits clear of the on-screen legend/guidance (no overlap).
 
-**Implementation:**
+**CSS** (palette-adapt the colors; structure is the standard):
+```css
+#help-overlay { display:none; position:absolute; inset:0; z-index:200; overflow-y:auto;
+  align-items:flex-start; justify-content:center; padding:clamp(28px,7vh,80px) clamp(20px,6vw,80px);
+  background:rgba(6,8,12,0.94); backdrop-filter:blur(8px); }
+#help-overlay.visible { display:flex; }
+#help-panel { max-width:min(92vw,680px); width:100%; margin:auto 0; line-height:1.75;
+  font-size:clamp(16pt, 2.1vh, 21pt); }            /* 16pt floor, scales up on tall viewports */
+#help-panel h2 { font-size:clamp(18pt,3vh,30pt); margin:0 0 0.6em; }
+#help-close { position:absolute; top:clamp(16px,3vh,30px); right:clamp(16px,3vw,34px);
+  width:46px; height:46px; border-radius:50%; z-index:201; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; }       /* the X */
+#help-badge { position:absolute; bottom:clamp(184px,24vh,210px); right:clamp(16px,3vw,28px);
+  z-index:80; width:42px; height:42px; border-radius:50%; cursor:pointer;   /* clear of the legend */
+  display:flex; align-items:center; justify-content:center; transition:transform .2s, box-shadow .2s; }
+#help-badge:hover { transform:scale(1.1); box-shadow:0 0 18px rgba(255,215,0,0.35); }
+```
+
+**Wiring:**
 ```javascript
+const helpOverlay = document.getElementById('help-overlay');
 let helpVisible = false;
+const setHelp = v => { helpVisible = v; helpOverlay.classList.toggle('visible', v); };
 
-document.addEventListener('keydown', (e) => {
-  if (e.key === '?' || e.key === '/') {
-    helpVisible = !helpVisible;
-    document.getElementById('help-overlay').style.display = helpVisible ? 'flex' : 'none';
-    return;
-  }
-  if (helpVisible && !e.metaKey && !e.ctrlKey && e.key !== 'Shift') {
-    helpVisible = false;
-    document.getElementById('help-overlay').style.display = 'none';
-    return;
-  }
+document.getElementById('help-badge').addEventListener('click', () => setHelp(true));
+document.getElementById('help-close').addEventListener('click', () => setHelp(false));
+helpOverlay.addEventListener('click', e => { if (e.target === helpOverlay) setHelp(false); });  // backdrop
+
+document.addEventListener('keydown', e => {
+  if (e.key === '?' || e.key === '/') { setHelp(!helpVisible); return; }
+  if (e.key === 'Escape' && helpVisible) { setHelp(false); return; }
+  if (helpVisible && !e.metaKey && !e.ctrlKey && e.key !== 'Shift') setHelp(false);  // any-key dismiss
 });
 ```
 
-**HTML structure:**
-```html
-<div id="help-overlay" style="display:none; position:absolute; inset:0; z-index:90;
-  display:flex; align-items:center; justify-content:center;
-  background:rgba(6,6,11,0.85); backdrop-filter:blur(4px);">
-  <div style="max-width:420px; text-align:center; color:#e8d5b5; font-family:'DM Mono',monospace; font-size:13px; line-height:1.8;">
-    <strong style="font-family:Cinzel,serif; font-size:18px; color:#ffd700;">Controls</strong><br><br>
-    <em>Pinch thumb to finger</em> — play a note<br>
-    <em>Space</em> — pause / resume<br>
-    <em>? or /</em> — toggle this help<br>
-    <!-- Variant-specific controls go here -->
-  </div>
-</div>
-```
+**HTML:** `#help-overlay` contains `#help-close` (the X) and `#help-panel` (an `<h2>` title + variant-specific `<em>`-tagged control lines). A separate `#help-badge` button lives in the chrome layer.
 
-**Note:** Content must be variant-specific. Each variant adds its own control descriptions (scale switching, mode changes, etc.).
+**Note:** Content must be variant-specific. Each variant fills `#help-panel` with its own controls (scales, modes, gestures). **Badge position is per-variant** — place it clear of *that variant's* densest chrome corner. The conflicting element differs: on theremin it's the bottom-right legend; on stellar-conductor it's the bottom-right `#vol-wrap` (so the badge sits raised above it). Don't copy a fixed `bottom` value between variants.
 
 ---
 
@@ -297,19 +330,12 @@ const AUTO_PAUSE_DELAY = 30000; // 30 seconds
 // In processFrame, after hand detection
 if (handResults && handResults.length > 0) {
   lastHandsSeen = performance.now();
-} else {
-  if (!paused && performance.now() - lastHandsSeen > AUTO_PAUSE_DELAY) {
-    paused = true;
-    // Kill voices (same as spacebar pause)
-    Object.keys(pinchState).forEach(k => {
-      if (pinchState[k]) {
-        pinchState[k] = false;
-        if (voices[k]) voices[k].noteOff();
-      }
-    });
-  }
+} else if (!paused && performance.now() - lastHandsSeen > AUTO_PAUSE_DELAY) {
+  setPaused(true);   // reuse the #6 master-bus mute path — never inline a bespoke voice-kill
 }
 ```
+
+**Note:** Auto-pause MUST route through the same `setPaused()` as spacebar (#6) so continuous/drone voices are silenced at the master bus, not just discrete note-offs.
 
 ---
 
@@ -444,6 +470,123 @@ function tickToasts(W, H) {
 
 ---
 
+### 14. Click-Free Audio Ramps
+
+**What:** Never assign an audio param abruptly. Step changes (pause, mode switch, voice gate) use the cancel→hold→ramp idiom; continuous changes use `setTargetAtTime`.
+
+**Why:** A bare `gain.value = 0` (or any discontinuity) produces an audible click/pop. Every gate, mute, and switch must glide.
+
+**Acceptance:** Pausing, switching modes, gating a voice on/off, and large filter sweeps produce no clicks or pops.
+
+**Implementation:**
+```javascript
+// Step change (mute, gate, switch) — schedule from the current value, then ramp:
+function rampTo(param, value, t, secs = 0.02) {
+  param.cancelScheduledValues(t);
+  param.setValueAtTime(param.value, t);          // anchor at where we actually are
+  param.linearRampToValueAtTime(value, t + secs);
+}
+
+// Continuous per-frame tracking (pitch, volume, filter) — time-constant smoothing:
+param.setTargetAtTime(target, audioCtx.currentTime, 0.05);
+```
+
+**Note:** The master-bus mute in #6 IS this idiom. Pair with #1 (motion smoothing) — #1 smooths the *control signal*, #14 smooths the *audio param*; both are needed. **In practice this is mostly an audit, not new code** — most variants already ramp their per-voice params; the common gap is the pause path (#6). Spot-check for bare `gain.value =` / `frequency.value =` in mid-performance code paths.
+
+---
+
+### 15. UI Contrast Floor (Readable Chrome)
+
+**What:** On-screen chrome (labels, legends, titles, pills, status) holds a minimum opacity so it's legible over the live camera + canvas. The per-frame background veil stays light enough that chrome reads through it.
+
+**Why:** A catalog-wide regression: control opacities sat at 0.08–0.35 and were *compounded* by a heavy per-frame canvas veil (~0.28), leaving text and buttons looking disabled ("behind a dimming layer"). Two dimmers stack multiplicatively.
+
+**Acceptance:** Every label, legend line, title, pill, and status string is comfortably readable over a bright camera feed. Nothing essential looks greyed-out/disabled. The pitch-trace/particle trail still reads (veil not too light).
+
+**Parameters (floors, adapt to palette):**
+```text
+labels / legend / status / pills    opacity ≥ 0.5   (active/primary ≥ 0.7)
+titles / headings                    opacity ≥ 0.6
+secondary / sub-labels               opacity ≥ 0.4
+per-frame background veil            alpha   ≤ ~0.18  (was 0.28 — too heavy)
+```
+
+**Note:** The two dimmers compound — fixing only the label opacity OR only the veil is not enough. **But audit, don't blind-edit:** raise only what's actually below floor. The veil is often already fine (stellar-conductor's was 0.17 — at floor; only its label opacities needed raising), and lowering an already-good value would over-correct. Check both; change each only if it's under. Disabled/inactive states may go below the floor *intentionally*; live controls may not.
+
+**The veil ceiling only compounds with *canvas-drawn* chrome.** Where chrome is **DOM layered above the canvas** (positioned elements at a higher z-index than `#canvas`), the per-frame veil dims the camera feed *behind* the text — it does **not** stack with the DOM opacity, and a darker canvas background actually *improves* DOM text contrast. In that layout the ≤0.18 ceiling does not apply: a heavier veil that's part of the visual identity (e.g. pulling-cliff's 0.30 oscilloscope persistence trail) is fine — fix only the DOM chrome opacities. Apply the ≤0.18 ceiling **only** to chrome the variant paints onto the canvas itself (text/HUD drawn via `ctx.fillText`), where the two dimmers genuinely multiply.
+
+---
+
+### 16. Swap-and-Pop in Hot Loops
+
+**What:** Remove dead items from per-frame particle/effect arrays with swap-and-pop, never `splice`.
+
+**Why:** `arr.splice(i, 1)` in a draw/tick loop is O(n) and churns memory; at particle scale it causes periodic micro-stutter and GC stalls. Swapping the dead item with the last element and `pop()` is O(1) and allocation-free. Pure perf, zero behavior change.
+
+**Acceptance:** Identical visuals; frame rate holds steady under heavy particle load (no periodic stutter).
+
+**Implementation:**
+```javascript
+for (let i = arr.length - 1; i >= 0; i--) {        // descending — required
+  const p = arr[i];
+  // ...update p...
+  if (p.life <= 0) { arr[i] = arr[arr.length - 1]; arr.pop(); continue; }
+  // ...draw p...
+}
+```
+
+**Note:** Safe only where draw order is irrelevant (true for all known effect arrays). **Do NOT** apply to order-bound arrays: `toasts` (#13 — index = stack position) and any timing-ordered queue (e.g. pulse's `vizQueue`) keep their `splice`. Ledger: `concerns/swap-and-pop-particles.md` (applied across 12 variants, 2026-06-04).
+
+---
+
+## Provisional — documented, NOT yet mandatory
+
+### P1. Clap Gestures (occlusion-as-contact, two tiers)
+
+**Status:** Prototyped on theremin; **not in the mandatory checklist** until one clean camera pass per variant. Spacebar (#6) remains the universal pause/unpause; clap is additive.
+
+---
+
+#### P1a. Single clap while paused → unpause (recommend universally once verified)
+
+**What:** A single clap while the app is paused resumes it. Because the app is already silent and frozen, the false-positive cost is negligible — the worst case is an accidental resume, which the user can immediately re-pause. **Enable P1a for every variant that passes camera verification, even if P1b is impractical.**
+
+**Pause overlay text:** append "or clap" after "press spacebar to resume" whenever P1a is active.
+
+---
+
+#### P1b. Double clap → toggle pause (variant-conditional)
+
+**What:** Two hands clapped together toggle pause from either state (pause OR unpause). More powerful than P1a but carries meaningful false-positive risk mid-performance — a fast effect-hand gesture toward the player hand can mimic the convergence signature. **Only enable P1b when the variant's gesture vocabulary and layout make a false-pause acceptable.** Variants with heavy two-hand effect gestures should keep P1a (clap-to-unpause) and omit P1b.
+
+---
+
+**Detection model (shared by P1a and P1b):** Palms meeting **occlude each other** (MediaPipe drops a hand), so a *sustained fast convergence that collapses to <2 hands* IS the contact — don't try to see both palms at impact.
+
+**Hard-won caveats:**
+- **Occlusion eats the impact** — treat the collapse-to-<2-hands as the hit, not a distance reading.
+- **Window must be generous** (~1200ms between claps, P1b): watched clap-clap is 700–1000ms apart plus re-acquisition latency. Too tight = second impact re-enters the first-clap branch, never toggles.
+- **Re-arm via separation** (hysteresis on a release distance) so the second clap of a pair registers.
+- **Guard P1b:** sustained-convergence frame count + any-pinch veto to suppress false triggers.
+- **Debug HUD required** — toggle `c` to expose `hands / d / vel / latch / clap1 / window-remaining / lost-frames` so a failed attempt is diagnosable, not a blind re-tune.
+
+**Tripwire:** single-clap (P1a) demonstrably works; clap-clap (P1b) has been the failure mode. If P1b fails the HUD test, keep P1a and defer P1b — do not tune endlessly. Full notes: `POLISH-PROTOCOL-PENDING.md`.
+
+---
+
+## Gesture Vocabulary (reference)
+
+Reusable gesture primitives proven on theremin now live in **`handysynth-foundation/CLAUDE.md` → Gesture Vocabulary** (the canonical home). Brief reiteration so variant authors know they exist:
+
+- **`handTwist(lms)`** — in-plane hand rotation, `atan2(midMCP − wrist)`. ⚠ This is *steering-wheel* rotation in the image plane — **forearm pronation is NOT recoverable from 2D landmarks**. Calibrate a baseline; don't expect absolute angle accuracy.
+- **`handOpenness(lms)`** — 0 (fist) … 1 (open), normalized by palm size.
+- **`estimateDepth(lms)`** — 0 (near) … 1 (far), already in core.
+- **Effect-hand axis set** — a five-way vocabulary for mapping one hand to continuous controls: **Y-Lift · X-Slide · Z-Pull (depth) · T-Twist · G-Grip (openness)**.
+
+Use these instead of re-deriving per variant. Smooth twist with shortest-arc EMA (unwrap the angle delta).
+
+---
+
 ## Retrofit Checklist (Existing Variant Version Bump)
 
 When upgrading an existing variant, apply each item below. Check off as implemented and tested.
@@ -451,27 +594,32 @@ When upgrading an existing variant, apply each item below. Check off as implemen
 ```
 [ ] 1.  Motion smoothing — EMA on X, Y, Z before mapping to audio
 [ ] 2.  Canvas clear — semi-transparent fill, no hand ghosting
-[ ] 3.  Cursor particles — cursor:none + themed trailing emitter
+[ ] 3.  Cursor particles — cursor:none + themed trailing emitter (verify no bespoke reticle)
 [ ] 4.  Immersive mode — .ui-hideable class + 3s mouse-idle auto-hide
 [ ] 5.  Release-on-vanish — orphaned voices killed every frame
-[ ] 6.  Spacebar pause — immediate silence, overlay, full voice kill
-[ ] 7.  Help overlay — ?// toggle, any-key dismiss, variant-specific content
-[ ] 8.  Auto-pause — 30s no hands → auto-pause (no auto-resume)
+[ ] 6.  Pause — master-bus mute (covers drones) + skeleton freeze + intended-vol resume
+[ ] 7.  Help overlay — full-viewport, 16pt floor, ? badge, X/Esc/backdrop/any-key dismiss
+[ ] 8.  Auto-pause — 30s no hands → setPaused(true) (shared mute path, no auto-resume)
 [ ] 9.  Pinch hysteresis — separate on/off thresholds
 [ ] 10. Velocity sensitivity — 3-frame distance delta → attack intensity
 [ ] 11. AudioContext guard — resume-on-suspended every frame
 [ ] 12. Responsive resize — canvas + layout recalc on window resize
 [ ] 13. Toast system — auto-dismiss notifications for mode changes
+[ ] 14. Click-free ramps — cancel→hold→ramp for steps; setTargetAtTime for continuous
+[ ] 15. UI contrast floor — chrome ≥ 0.5 opacity; per-frame veil ≤ ~0.18 (both, they compound)
+[ ] 16. Swap-and-pop — hot-loop array removal (skip toasts / order-bound queues)
+[ ] P1a. (provisional) Single clap while paused → unpause — universal once camera-verified; recommend for all variants
+[ ] P1b. (provisional) Double clap → toggle pause — variant-conditional; skip if heavy two-hand gestures create false-pause risk
 ```
 
 ### Version Bump Convention
 
-When all 13 items are confirmed present, bump the variant's minor version (e.g., 1.0 → 1.1) and note "universal polish v1.0" in the changelog.
+When all 16 mandatory items are confirmed present, bump the variant's minor version (e.g., 1.0 → 1.1) and note "universal polish v1.1" in the changelog. P1 (clap) is not required for the bump.
 
 ---
 
 ## Notes for Variant Generators
 
-When Claude (or any system) generates a new variant, ALL 13 items above are **mandatory inclusions** — they are not optional enhancements. The variant's unique identity comes from its audio engine, visual theme, and gesture interpretation. The polish items are infrastructure that every instrument needs.
+When Claude (or any system) generates a new variant, ALL 16 mandatory items above are **mandatory inclusions** — they are not optional enhancements. The variant's unique identity comes from its audio engine, visual theme, and gesture interpretation. The polish items are infrastructure that every instrument needs. (P1a clap-to-unpause: recommend universally once camera-verified. P1b clap-to-pause: variant-conditional — omit if the gesture vocabulary creates false-pause risk.)
 
-Adapt colors, fonts, and particle physics to the variant's palette and theme, but do not omit any item.
+Adapt colors, fonts, and particle physics to the variant's palette and theme, but do not omit any mandatory item.

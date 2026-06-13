@@ -13,7 +13,7 @@ status:
   drumspace: needs-patch
   finger-guns: n/a
   fireflies: n/a
-  lumen: needs-patch
+  lumen: applied
   pulse: deferred
   runecatch: applied
   stellar-conductor: applied

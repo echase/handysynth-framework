@@ -46,6 +46,46 @@ variants/
 - Any variant-specific gesture interpretation beyond pinch on/off
 - DOM controls (scale selector, root selector, mode switches)
 
+## Gesture Vocabulary
+
+Reusable gesture primitives beyond pinch on/off. `estimateDepth` and `pinchDistance` ship in core
+(`handysynth.js`); `handOpenness` and `handTwist` are proven helpers variants currently **inline** — copy the
+reference implementations below (single-file apps, so copy, don't import). Proven on `theremin` (Round 2).
+
+| Primitive | Returns | Source | Notes |
+|-----------|---------|--------|-------|
+| `pinchDistance(lms, tipIdx)` | thumb→finger distance | core | drives pinch on/off |
+| `estimateDepth(lms)` | 0 near … 1 far | core | palm-span + landmark Z, power-curved |
+| `handOpenness(lms)` | 0 fist … 1 open | inline (from `drift`) | normalized by palm size |
+| `handTwist(lms)` | radians, in-plane | inline (new on `theremin`) | see caveat ⚠ |
+
+```javascript
+function dist3(a, b) { return Math.hypot(a.x-b.x, a.y-b.y, (a.z||0)-(b.z||0)); }
+function palmSize(lms) { return dist3(lms[0], lms[9]) || 0.001; }
+// 0 = fist, 1 = fully open — sum of fingertip→wrist distances / palm size
+function handOpenness(lms) {
+  const ps = palmSize(lms); let sum = 0;
+  for (let fi = 0; fi < 4; fi++) sum += dist3(lms[FINGER_TIPS[fi]], lms[0]) / ps;
+  return Math.max(0, Math.min(1, (sum / 4 - 1.0) / 1.15));
+}
+// In-plane hand rotation: angle of the wrist→middle-MCP axis (landmarks 0→9)
+function handTwist(lms) { return Math.atan2(lms[9].y - lms[0].y, lms[9].x - lms[0].x); }
+```
+
+**⚠ Twist is steering-wheel, not pronation.** `handTwist` measures rotation **in the image plane** only.
+True forearm pronation (palm-up ↔ palm-down) is **not recoverable from 2D landmarks** — don't try. Because the
+absolute angle has no natural zero, **calibrate a baseline** (capture the neutral angle on engage) and drive
+controls from the *delta*. Smooth with a **shortest-arc EMA** (unwrap the angle: `d = atan2(sin(d), cos(d))`)
+or the value jumps at the ±π wrap.
+
+**Effect-hand axis set.** A single hand yields a five-way continuous-control vocabulary, useful for mapping one
+hand to effect parameters: **Y-Lift** (`1 - tip.y`) · **X-Slide** (`1 - tip.x`) · **Z-Pull** (`estimateDepth`) ·
+**T-Twist** (`handTwist`) · **G-Grip** (`handOpenness`). Positional axes are already 0..1; twist normalizes via
+`clamp01(0.5 + twist·k)` around its baseline.
+
+**Two-hand role assignment** — never trust the MediaPipe `handedness` label for distinct per-hand roles; it
+flips on crossing/occlusion. Assign by behavior or X-position. See `concerns/two-hand-role-stability.md`.
+
 ## Variant Callback Interface
 
 ```javascript
@@ -89,7 +129,7 @@ new HandySynth({
 2. Implement callbacks in `variant.js`
 3. Theme `index.html` (styles, controls, overlay)
 4. Wire controls to `hs.setScale()`, `hs.setRoot()`, `hs.setVolume()`
-5. **Apply all items from `VARIANT-POLISH.md`** — 13 mandatory UX refinements (motion smoothing, pause, help, immersive mode, stuck-note prevention, etc.) that every variant must include
+5. **Apply all items from `VARIANT-POLISH.md`** (v1.1) — 16 mandatory UX refinements (motion smoothing, master-bus pause, full-screen help, immersive mode, stuck-note prevention, click-free ramps, contrast floor, swap-and-pop, etc.) that every variant must include
 
 The audio graph topology is up to you. The core provides `masterGain` → `analyser` → `destination`. Connect your audio into `masterGain`. If you need reverb, compression, or other bus effects, build them in `onInit` and route through `masterGain`.
 
