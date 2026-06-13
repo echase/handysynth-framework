@@ -39,7 +39,7 @@ built the same thing, that is the strongest signal it belongs in the shared base
 | # | Candidate | Source | Note |
 |---|-----------|--------|------|
 | B1 | Per-finger scale-degree chord offsets | crystal-harp | musical feature, melodic variants |
-| B2 | Parametric voice class (FM "species" pattern) | augury | timbre variety without N engines |
+| B2 | Parametric voice class (FM "species" pattern) | augury | **promoted → ADR 010 (HandyVoice)**; generalized to declarative patches over fixed engines |
 | B3 | Musicality scoring (consonance/rhythm/dynamics feedback) | runecatch | strong differentiator, high effort |
 | B4 | Screen-shake + border-glow impact feedback | finger-guns | percussion/impact variants |
 | B5 | relationshipFrame: two-body relational features (distance, mirroring, near-touch, shared stillness) above paired BodyStates | embra (future two-player mode) | relational layer sits above individual BodyState objects, never inside pose tracking; see specs/2026-06-12-embra-relational-direction.md |

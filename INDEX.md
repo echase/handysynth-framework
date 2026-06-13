@@ -50,6 +50,12 @@ Living document. Update this when artifacts are created, decisions are made, or 
 - [ ] Passive calibration — running envelope that auto-widens, no user action needed
 - [ ] Optional active calibration sweep — "move close to far" prompt, locks range, stores in localStorage
 
+### HandyVoice — modular voice library (next)
+- [ ] Declarative patches over a fixed engine set; three provenance tiers (baked-in / federated / user-local) — ADR 010 + `2026-06-13-handyvoice-design.md`
+- [ ] Define initial engine set by consolidating existing catalog DSP (FM, subtractive, additive/bell, Karplus-Strong, perc)
+- [ ] Author `voices.v1.js` (engine registry + VoiceBank + loader/cache); pilot on one variant (`drumspace` or `crystal-harp`)
+- [ ] Stand up static registry at `everittchase.com/handysynth/voices/` (manifest + starter patches, Cloudflare-fronted)
+
 ### Gesture Vocabulary Expansion
 - [ ] Finger curl detection (extension angle from 3-joint chain)
 - [ ] Palm rotation (wrist-to-MCP plane normal)
@@ -73,5 +79,6 @@ Living document. Update this when artifacts are created, decisions are made, or 
 |-------------|--------|-------------|
 | Origin | AirSynth v1 → Pyrefey v2.1 → HandySynth platform refactor | `handysynth.js`, `pyrefey.js`, variant template, CLAUDE.md, onboarding.md, deploy package, roadmap |
 | 2026-05-29 | v1.1: iOS Safari audio fix + 13-item polish standard | `VARIANT-POLISH.md`, `Safari-Silence-Fix.md`, CHANGELOG.md, v1.1 core patch, 12 catalog variants patched |
+| 2026-06-13 | HandyVoice feasibility → architecture: modular voice library, offline-complete core + enhancement tiers | ADR 010, `2026-06-13-handyvoice-design.md` |
 
 *Update this table as new conversations produce artifacts or decisions.*
