@@ -11,9 +11,13 @@ status:
   crystal-harp: needs-patch
   drift: needs-patch
   drumspace: needs-patch
+  embra: needs-patch
   finger-guns: applied@v2
   fireflies: needs-patch
+  loom: needs-patch
   lumen: needs-patch
+  lumora: applied@v0.33b
+  pulling-cliff: needs-patch
   pulse: n/a
   runecatch: needs-patch
   stellar-conductor: n/a
@@ -89,6 +93,14 @@ Same class; store instances in the per-voice/per-finger state object instead of 
 - **n/a (2):** pulse and stellar-conductor smooth percussion/conducting signals where adaptive landmark
   smoothing doesn't apply (no held-pitch warble to kill).
 - **applied (1):** finger-guns (canonical source).
+
+## Sweep findings (2026-06-20 — new variants classified)
+
+Four variants added since the first sweep, all on fixed-k EMA → **needs-patch**:
+- **embra** — fixed-k `T.emaPos` on pose wrists (`s.x += (l.x - s.x) * T.emaPos`); continuous wrist-x→freq and height→vol axes warble at low speed.
+- **loom** — `TIP_SMOOTH_K = 0.10` accumulation; continuous-pitch → high payoff.
+- **lumora** — fixed-α `T.emaPos` / `T.emaOpen` on up-to-4 hands; continuous freq/force/openness.
+- **pulling-cliff** — fixed-k EMA (α=0.18) on the pitch axis.
 
 ## Deferrals
 
