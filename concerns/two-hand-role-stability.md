@@ -11,10 +11,15 @@ status:
   crystal-harp: n/a
   drift: n/a
   drumspace: n/a
+  embra: n/a
   finger-guns: n/a
   fireflies: n/a
+  loom: needs-patch
   lumen: n/a
+  lumora: n/a
+  pulling-cliff: applied@v0.7b
   pulse: n/a
+  pyrefey-original: applied@v3.1
   runecatch: needs-patch
   stellar-conductor: needs-patch
   synesthesia: needs-patch
@@ -91,6 +96,12 @@ N-A unless drumspace assigns distinct per-hand banks — confirm; its hits are l
   independent and symmetric (same mapping regardless of which hand), so a label swap is harmless.
 - **⚠ human review — drift:** drift pans the two hands hard L/R for stereo. A label swap would flip the stereo
   image, but whether that's "distinct roles" or "harmless symmetry" is a judgment call. Flagged for your ear.
+
+## Sweep findings (2026-06-20 — new variants classified)
+
+- **applied (1):** pulling-cliff — implements the sticky-slot pattern explicitly (`pickRoles()`, L718–755): the label seeds a *new* slot only, then roles track by palm-center proximity. Code comment names this concern. A third in-the-wild instance of the fix (alongside air-guitar energy-slots and syrinx X-sort).
+- **needs-patch / execute (1):** loom — `handednesses` `categoryName === 'Left'` drives distinct per-hand octave shift (left=0, right=1, L530/L549/L561). A label flip mid-play swaps octaves. Real latent bug; join the theremin/stellar-conductor batch.
+- **n/a (2):** embra (PoseLandmarker, wrists by anatomical index 15/16, symmetric mapping, no handedness) and lumora (up to 4 hands, symmetric per-slot voices via SlotTracker; harvested label never branches behavior).
 
 ## ⚠ Canonical-source drift (flagged 2026-06-04)
 

@@ -11,10 +11,15 @@ status:
   crystal-harp: applied
   drift: applied
   drumspace: applied
+  embra: applied
   finger-guns: n/a
   fireflies: applied
+  loom: needs-patch
   lumen: applied
+  lumora: applied
+  pulling-cliff: applied
   pulse: applied
+  pyrefey-original: applied@v3.1
   runecatch: applied
   stellar-conductor: applied
   synesthesia: applied
@@ -94,3 +99,8 @@ here.
 
 **Verification still owed (human):** load each edited variant, confirm no console errors and visual parity
 (same particles, no stutter). Pure-perf change — no audio/gesture acceptance test needed.
+
+## Sweep findings (2026-06-20 — new variants classified)
+
+- **applied (3):** embra (`trail` swap-pop at L3312–3319, no splice), lumora (`trail` swap-pop at L3614, no splice anywhere), pulling-cliff (`sparks` L1300 + cursor L1340 swap-pop; `toasts` n/a; the `S.sparks.splice(0, len-300)` capacity-trim at L1220 is an occasional bulk cap on the pluck path, not a per-frame per-particle removal — recommend a tail-drop guard but it's not the hot-loop anti-pattern).
+- **needs-patch (1):** loom — 3 per-frame order-free arrays still splice: `pendingFlares` (L1298), `blooms` (L1317), `CURSOR_PARTICLES` (L1369). Convert all three. `toasts.splice` (L1380) stays — permanent n/a (order-bound). loom is the sole open swap-and-pop item since the 2026-06-04 batch closed the original 13.

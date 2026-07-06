@@ -17,8 +17,9 @@ status:
   loom: needs-patch
   lumen: needs-patch
   lumora: applied@v0.33b
-  pulling-cliff: needs-patch
+  pulling-cliff: applied@v0.8b
   pulse: n/a
+  pyrefey-original: applied@v3.2
   runecatch: needs-patch
   stellar-conductor: n/a
   synesthesia: needs-patch
@@ -101,6 +102,10 @@ Four variants added since the first sweep, all on fixed-k EMA → **needs-patch*
 - **loom** — `TIP_SMOOTH_K = 0.10` accumulation; continuous-pitch → high payoff.
 - **lumora** — fixed-α `T.emaPos` / `T.emaOpen` on up-to-4 hands; continuous freq/force/openness.
 - **pulling-cliff** — fixed-k EMA (α=0.18) on the pitch axis.
+
+## Sweep findings (2026-07-05 — pulling-cliff patched)
+
+- **applied (pulling-cliff, v0.8b):** replaced the fixed-k EMA (α=0.18) on the pitch axis with a `pitchEuro = new OneEuro(1.0, 0.007, 1.0)` instance, reset alongside hand-loss and pause per the existing `reset()` convention. Canonical `OneEuro` class copied verbatim from finger-guns, no deviation.
 
 ## Deferrals
 

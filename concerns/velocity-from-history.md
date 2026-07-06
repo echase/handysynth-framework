@@ -11,10 +11,15 @@ status:
   crystal-harp: needs-patch
   drift: n/a
   drumspace: needs-patch
+  embra: n/a
   finger-guns: n/a
   fireflies: n/a
+  loom: needs-patch
   lumen: applied
+  lumora: applied
+  pulling-cliff: applied@v0.8b
   pulse: deferred
+  pyrefey-original: applied@v3.1
   runecatch: applied
   stellar-conductor: applied
   synesthesia: needs-patch
@@ -83,6 +88,16 @@ canonical `velAt`.
   engine's attack is non-trivial; queue behind the execute set.
 - **n/a (5):** finger-guns, theremin, drift, fireflies, syrinx — continuous/drone or no discrete attack
   parameter to drive.
+
+## Sweep findings (2026-06-20 — new variants classified)
+
+- **applied (1):** lumora — `pinchHist` 3-frame ring buffer → `pinchVel = pinchHist[0] - pinchDist` → onset attack `clamp(pinchVel*25, 0.2, 1)`. A genuine windowed velocity, conforms to intent.
+- **needs-patch / soft-divergence (2):** loom (`pinchDistPrev` single-frame delta → note amp) and pulling-cliff (`prevGap` 2-frame delta → pluck attack). Both already deliver onset velocity, so they "work," but a 1–2 sample derivative is exactly what the canonical ring-buffer window exists to stabilize — they fail the stability half of acceptance (single-frame jitter). Conform on next touch; not blocking. Queue behind the execute set.
+- **n/a (1):** embra — body-pose continuous-drone + effort-curve pluck; the onset uses EffortCurves jerk (motion velocity), not a per-note attack from a position ring buffer. No discrete attack param to drive.
+
+## Sweep findings (2026-07-05 — pulling-cliff patched)
+
+- **applied (pulling-cliff, v0.8b):** replaced the 2-frame `prevGap`/`prevT` derivative flagged above as a soft divergence with a capped `gapHist` ring buffer (~6 frames / ~100ms), mirroring lumora's accepted windowed `pinchHist` pattern. Onset velocity now reads the buffered span-delta instead of a single-frame delta; the buffer clears after each read. `prevGap`/`prevT` state removed as dead code.
 
 ## Deferrals
 
