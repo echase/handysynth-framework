@@ -1497,6 +1497,7 @@ export const Lumini = {
   mount(container, opts = {}) {
     const preset = PRESETS[opts.preset] || PRESETS.classic;
     const config = { ...preset, PAUSED: false };
+    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const canvas = document.createElement('canvas');
     canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
@@ -1506,12 +1507,41 @@ export const Lumini = {
     const ro = new ResizeObserver(() => fluid.resize());
     ro.observe(container);
 
+    // R16 idle breathing: seeded Lissajous emitters keep the medium alive
+    // when no input arrives, fading out on the first real splat.
+    const idleAfter = opts.idleAfter ?? 4000;
+    let lastInput = performance.now();
+    let idleFade = 0;
+    // seeded at mount — NO Math.random per frame
+    const emitters = [
+      { fx: 0.7, fy: 1.1, phase: 0.0,  rate: 0.08, t: 0.0 },
+      { fx: 1.3, fy: 0.6, phase: 2.1,  rate: 0.06, t: 10.0 },
+      { fx: 0.5, fy: 0.9, phase: 4.2,  rate: 0.10, t: 20.0 },
+    ];
+
     const queue = [];
     let raf = 0;
     const loop = () => {
       raf = requestAnimationFrame(loop);
       for (const s of queue) fluid._applyScreenSplat(s);
       queue.length = 0;
+
+      const now = performance.now();
+      const idle = idleAfter > 0 && (now - lastInput) > idleAfter;
+      idleFade += ((idle ? 1 : 0) - idleFade) * 0.03; // ~1–2s ramp
+      if (idleFade > 0.01 && !reducedMotion) {
+        const dt = 1 / 60;
+        for (const e of emitters) {
+          e.t += dt * (e.rate * 8);
+          const ex = 0.5 + 0.35 * Math.sin(e.t * e.fx);
+          const ey = 0.5 + 0.30 * Math.sin(e.t * e.fy + e.phase);
+          const vx = 0.35 * e.fx * Math.cos(e.t * e.fx);
+          const vy = 0.30 * e.fy * Math.cos(e.t * e.fy + e.phase);
+          const c = heatColor(0.25 * idleFade); // dim
+          fluid._applyScreenSplat({ x: ex, y: ey, dx: vx, dy: vy, color: c });
+        }
+      }
+
       fluid.tick();
     };
     raf = requestAnimationFrame(loop);
@@ -1521,6 +1551,7 @@ export const Lumini = {
       get simMs() { return fluid.simMs(); },
       _rawSplat: fluid.rawSplat,
       splat(x, y, dx, dy, color) {
+        lastInput = performance.now();
         queue.push({ x, y, dx, dy, color: color || heatColor(0.5) });
       },
       destroy() {
