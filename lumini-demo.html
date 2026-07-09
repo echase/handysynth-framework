@@ -3,16 +3,67 @@
 <title>Lumini Demo</title>
 <style>
   html,body{margin:0;height:100%;background:#04040a;overflow:hidden}
+  #host{position:absolute;inset:0}
   #stage{position:absolute;inset:0}
   #hud{position:absolute;left:12px;top:12px;z-index:10;color:#9ab;
     font:12px/1.5 ui-monospace,monospace;background:#0008;padding:8px 12px;border-radius:6px}
+  #layerToggle{font:inherit;color:inherit;background:#fff2;border:1px solid #9ab;border-radius:4px;
+    padding:2px 8px;cursor:pointer;margin-left:8px}
 </style>
+<canvas id="host"></canvas>
 <div id="stage"></div>
 <div id="hud">lumini demo · <span id="ms">–</span>
-  · energy <input id="e" type="range" min="0" max="1" step="0.01" value="0"></div>
+  · energy <input id="e" type="range" min="0" max="1" step="0.01" value="0">
+  <button id="layerToggle" type="button">layer: under</button></div>
 <script type="module">
   import { Lumini, OneEuro, heatColor } from './lumini.js';
-  const lum = Lumini.mount(document.getElementById('stage'), { preset: 'classic' });
+
+  // Step 2: static host art behind #stage — confirms `layer:'over'` blends
+  // the fluid on top of existing content (screen blend) instead of hiding it,
+  // and `layer:'under'` sits behind a transparent host.
+  const host = document.getElementById('host');
+  function drawHost() {
+    host.width = innerWidth;
+    host.height = innerHeight;
+    const c = host.getContext('2d');
+    const g = c.createLinearGradient(0, 0, host.width, host.height);
+    g.addColorStop(0, '#ff6b6b');
+    g.addColorStop(0.5, '#ffd166');
+    g.addColorStop(1, '#4ecdc4');
+    c.fillStyle = g;
+    c.fillRect(0, 0, host.width, host.height);
+    c.fillStyle = '#fff';
+    c.beginPath(); c.arc(host.width * 0.22, host.height * 0.28, 60, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#222';
+    c.fillRect(host.width * 0.6, host.height * 0.5, 140, 90);
+    c.beginPath();
+    c.moveTo(host.width * 0.45, host.height * 0.78);
+    c.lineTo(host.width * 0.58, host.height * 0.92);
+    c.lineTo(host.width * 0.32, host.height * 0.92);
+    c.closePath();
+    c.fillStyle = '#333';
+    c.fill();
+  }
+  drawHost();
+  addEventListener('resize', drawHost);
+
+  // Task 6: layer toggle — re-mounts Lumini between 'under' and 'over'.
+  const stage = document.getElementById('stage');
+  const layerBtn = document.getElementById('layerToggle');
+  let layer = 'under';
+  let lum;
+
+  function mountLumini() {
+    if (lum) lum.destroy();
+    lum = Lumini.mount(stage, { preset: 'classic', layer });
+    layerBtn.textContent = 'layer: ' + layer;
+  }
+  mountLumini();
+
+  layerBtn.addEventListener('click', () => {
+    layer = layer === 'under' ? 'over' : 'under';
+    mountLumini();
+  });
 
   // Task 3: mouse-driven R1 wake trail — OneEuro-smoothed screen-space splat().
   const euroX = new OneEuro(1.2, 0.01), euroY = new OneEuro(1.2, 0.01);

@@ -9,6 +9,7 @@ Living document. Update this when artifacts are created, decisions are made, or 
 |------|--------|-------------|
 | `handysynth.js` | v1.1 stable | Gesture detection, hand tracking, pitch mapping, startup orchestration. iOS Safari audio fix applied. |
 | `effort-curves.js` | v0.1.0 | Landmark-agnostic effort features (energy, smoothness, stillness, onsets). Node-tested. First consumer: embra. |
+| `lumini.js` | v0.1.0 | Input-agnostic WebGL fluid feedback layer — screen-space `splat()`, energy turbulence (R5), idle breathing (R16), `under`/`over` layering, pause/resume, context-loss handling. Node-tested. Demo/tuning rig: `lumini-demo.html`. |
 | `CLAUDE.md` | Current | Architecture spec, callback interface, constructor options, constraints |
 
 ### Variants

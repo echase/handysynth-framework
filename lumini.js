@@ -1502,6 +1502,10 @@ export const Lumini = {
 
     const canvas = document.createElement('canvas');
     canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
+    if (opts.layer === 'over') {
+      canvas.style.mixBlendMode = 'screen';
+      canvas.style.pointerEvents = 'none';
+    }
     container.appendChild(canvas);
 
     const fluid = createFluid(canvas, config);
@@ -1528,33 +1532,56 @@ export const Lumini = {
       { fx: 0.5, fy: 0.9, phase: 4.2,  rate: 0.10, t: 20.0 },
     ];
 
-    const queue = [];
     let raf = 0;
+
+    // Context loss: the sim is unrecoverable mid-loss, so stop ticking and
+    // hand off to the host via the (re)assignable onContextLost callback.
+    let onContextLost = opts.onContextLost || null;
+    canvas.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+      cancelAnimationFrame(raf);
+      if (onContextLost) onContextLost();
+    });
+
+    // pause/resume write the LIVE config (liveConfig === fluid.config, the
+    // object createFluid's internal closures actually read) — mount's own
+    // `config` above is a dead pre-merge copy (see liveConfig comment).
+    function pause() { liveConfig.PAUSED = true; }
+    function resume() { liveConfig.PAUSED = false; }
+    const onVisibilityChange = () => { document.hidden ? pause() : resume(); };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    const queue = [];
     const loop = () => {
       raf = requestAnimationFrame(loop);
-      for (const s of queue) fluid._applyScreenSplat(s);
-      queue.length = 0;
 
-      const now = performance.now();
-      const idle = idleAfter > 0 && (now - lastInput) > idleAfter;
-      idleFade += ((idle ? 1 : 0) - idleFade) * 0.03; // ~1–2s ramp
-      if (idleFade > 0.01 && !reducedMotion) {
-        const dt = 1 / 60;
-        for (const e of emitters) {
-          e.t += dt * (e.rate * 8);
-          const ex = 0.5 + 0.35 * Math.sin(e.t * e.fx);
-          const ey = 0.5 + 0.30 * Math.sin(e.t * e.fy + e.phase);
-          const vx = 0.35 * e.fx * Math.cos(e.t * e.fx);
-          const vy = 0.30 * e.fy * Math.cos(e.t * e.fy + e.phase);
-          const c = heatColor(0.25 * idleFade); // dim
-          fluid._applyScreenSplat({ x: ex, y: ey, dx: vx, dy: vy, color: c });
+      if (!liveConfig.PAUSED) {
+        for (const s of queue) fluid._applyScreenSplat(s);
+        queue.length = 0;
+
+        const now = performance.now();
+        const idle = idleAfter > 0 && (now - lastInput) > idleAfter;
+        idleFade += ((idle ? 1 : 0) - idleFade) * 0.03; // ~1–2s ramp
+        if (idleFade > 0.01 && !reducedMotion) {
+          const dt = 1 / 60;
+          for (const e of emitters) {
+            e.t += dt * (e.rate * 8);
+            const ex = 0.5 + 0.35 * Math.sin(e.t * e.fx);
+            const ey = 0.5 + 0.30 * Math.sin(e.t * e.fy + e.phase);
+            const vx = 0.35 * e.fx * Math.cos(e.t * e.fx);
+            const vy = 0.30 * e.fy * Math.cos(e.t * e.fy + e.phase);
+            const c = heatColor(0.25 * idleFade); // dim
+            fluid._applyScreenSplat({ x: ex, y: ey, dx: vx, dy: vy, color: c });
+          }
         }
+
+        energyNow = smoothEnergy(energyNow, energyTarget, 0.1); // ~150ms
+        liveConfig.CURL = baseCurl + energyNow * 25;
+        liveConfig.VELOCITY_DISSIPATION = Math.max(0.05, baseDiss - energyNow * 0.15);
       }
 
-      energyNow = smoothEnergy(energyNow, energyTarget, 0.1); // ~150ms
-      liveConfig.CURL = baseCurl + energyNow * 25;
-      liveConfig.VELOCITY_DISSIPATION = Math.max(0.05, baseDiss - energyNow * 0.15);
-
+      // Always tick — createFluid's internal renderDirty logic handles
+      // sleeping while paused (renders once, then sleeps until new input).
       fluid.tick();
     };
     raf = requestAnimationFrame(loop);
@@ -1565,12 +1592,17 @@ export const Lumini = {
       _rawSplat: fluid.rawSplat,
       set energy(v) { energyTarget = v; },
       get energy() { return energyNow; },
+      get onContextLost() { return onContextLost; },
+      set onContextLost(fn) { onContextLost = fn; },
+      pause,
+      resume,
       splat(x, y, dx, dy, color) {
         lastInput = performance.now();
         queue.push({ x, y, dx, dy, color: color || heatColor(0.5) });
       },
       destroy() {
         cancelAnimationFrame(raf); ro.disconnect();
+        document.removeEventListener('visibilitychange', onVisibilityChange);
         fluid.gl.getExtension('WEBGL_lose_context')?.loseContext();
         canvas.remove();
       },
