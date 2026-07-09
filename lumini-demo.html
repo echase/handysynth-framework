@@ -1,0 +1,23 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Lumini Demo</title>
+<style>
+  html,body{margin:0;height:100%;background:#04040a;overflow:hidden}
+  #stage{position:absolute;inset:0}
+  #hud{position:absolute;left:12px;top:12px;z-index:10;color:#9ab;
+    font:12px/1.5 ui-monospace,monospace;background:#0008;padding:8px 12px;border-radius:6px}
+</style>
+<div id="stage"></div>
+<div id="hud">lumini demo · <span id="ms">–</span></div>
+<script type="module">
+  import { Lumini } from './lumini.js';
+  const lum = Lumini.mount(document.getElementById('stage'), { preset: 'classic' });
+  // Task 2 verification: a hardcoded oscillating splat in GL space.
+  let t = 0;
+  setInterval(() => {
+    t += 0.05;
+    const gx = 0.5 + 0.3 * Math.cos(t), gy = 0.5 + 0.3 * Math.sin(t);
+    lum._rawSplat(gx, gy, Math.cos(t) * 8, Math.sin(t) * 8, { r: 0.6, g: 0.2, b: 0.9 });
+    document.getElementById('ms').textContent = lum.simMs.toFixed(1) + ' ms';
+  }, 33);
+</script>
