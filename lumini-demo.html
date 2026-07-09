@@ -8,7 +8,8 @@
     font:12px/1.5 ui-monospace,monospace;background:#0008;padding:8px 12px;border-radius:6px}
 </style>
 <div id="stage"></div>
-<div id="hud">lumini demo · <span id="ms">–</span></div>
+<div id="hud">lumini demo · <span id="ms">–</span>
+  · energy <input id="e" type="range" min="0" max="1" step="0.01" value="0"></div>
 <script type="module">
   import { Lumini, OneEuro, heatColor } from './lumini.js';
   const lum = Lumini.mount(document.getElementById('stage'), { preset: 'classic' });
@@ -31,4 +32,7 @@
   setInterval(() => {
     document.getElementById('ms').textContent = lum.simMs.toFixed(1) + ' ms';
   }, 200);
+
+  // Task 5: R5 loudness turbulence — energy slider drives CURL/dissipation.
+  document.getElementById('e').addEventListener('input', (ev) => { lum.energy = +ev.target.value; });
 </script>

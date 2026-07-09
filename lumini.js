@@ -1490,6 +1490,7 @@ function hashCode (s) {
     tick: update,
     simMs: () => simMs,
     gl,
+    config,
   };
 }
 
@@ -1506,6 +1507,14 @@ export const Lumini = {
     const fluid = createFluid(canvas, config);
     const ro = new ResizeObserver(() => fluid.resize());
     ro.observe(container);
+
+    // Live config: createFluid() re-merges its parameter into a NEW object
+    // ({ ...DEFAULT_ENGINE_CONFIG, ...config }), so mount's own `config`
+    // variable above is a distinct object the sim never reads. Per-tick
+    // writes (R5 energy mapping) must target fluid.config instead.
+    const liveConfig = fluid.config;
+    const baseCurl = liveConfig.CURL, baseDiss = liveConfig.VELOCITY_DISSIPATION;
+    let energyTarget = 0, energyNow = 0;
 
     // R16 idle breathing: seeded Lissajous emitters keep the medium alive
     // when no input arrives, fading out on the first real splat.
@@ -1542,14 +1551,20 @@ export const Lumini = {
         }
       }
 
+      energyNow = smoothEnergy(energyNow, energyTarget, 0.1); // ~150ms
+      liveConfig.CURL = baseCurl + energyNow * 25;
+      liveConfig.VELOCITY_DISSIPATION = Math.max(0.05, baseDiss - energyNow * 0.15);
+
       fluid.tick();
     };
     raf = requestAnimationFrame(loop);
 
     return {
-      config,
+      config: liveConfig,
       get simMs() { return fluid.simMs(); },
       _rawSplat: fluid.rawSplat,
+      set energy(v) { energyTarget = v; },
+      get energy() { return energyNow; },
       splat(x, y, dx, dy, color) {
         lastInput = performance.now();
         queue.push({ x, y, dx, dy, color: color || heatColor(0.5) });
