@@ -10,14 +10,25 @@
 <div id="stage"></div>
 <div id="hud">lumini demo · <span id="ms">–</span></div>
 <script type="module">
-  import { Lumini } from './lumini.js';
+  import { Lumini, OneEuro, heatColor } from './lumini.js';
   const lum = Lumini.mount(document.getElementById('stage'), { preset: 'classic' });
-  // Task 2 verification: a hardcoded oscillating splat in GL space.
-  let t = 0;
+
+  // Task 3: mouse-driven R1 wake trail — OneEuro-smoothed screen-space splat().
+  const euroX = new OneEuro(1.2, 0.01), euroY = new OneEuro(1.2, 0.01);
+  let px = null, py = null, pt = 0;
+  addEventListener('pointermove', (e) => {
+    const now = performance.now(), dt = pt ? (now - pt) / 1000 : 1 / 60; pt = now;
+    const x = euroX.filter(e.clientX / innerWidth, dt);
+    const y = euroY.filter(e.clientY / innerHeight, dt);
+    if (px !== null) {
+      const dx = (x - px) / dt, dy = (y - py) / dt;
+      const speed = Math.min(Math.hypot(dx, dy), 3.0);
+      if (speed > 0.02) lum.splat(x, y, dx, dy, heatColor(speed / 3.0));
+    }
+    px = x; py = y;
+  });
+
   setInterval(() => {
-    t += 0.05;
-    const gx = 0.5 + 0.3 * Math.cos(t), gy = 0.5 + 0.3 * Math.sin(t);
-    lum._rawSplat(gx, gy, Math.cos(t) * 8, Math.sin(t) * 8, { r: 0.6, g: 0.2, b: 0.9 });
     document.getElementById('ms').textContent = lum.simMs.toFixed(1) + ' ms';
-  }, 33);
+  }, 200);
 </script>

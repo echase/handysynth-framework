@@ -1383,6 +1383,11 @@ function _rawSplat (x, y, dx, dy, color) {
     dye.swap();
 }
 
+function _applyScreenSplat({ x, y, dx, dy, color }) {
+    const g = screenToGL(x, y, dx * config.SPLAT_FORCE, dy * config.SPLAT_FORCE);
+    _rawSplat(g.x, g.y, g.dx, g.dy, color);
+}
+
 function correctRadius (radius) {
     let aspectRatio = canvas.width / canvas.height;
     if (aspectRatio > 1)
@@ -1475,6 +1480,7 @@ function hashCode (s) {
 
   return {
     rawSplat: _rawSplat,
+    _applyScreenSplat,
     resize() {
       if (resizeCanvas()) {
         initFramebuffers();
@@ -1500,14 +1506,23 @@ export const Lumini = {
     const ro = new ResizeObserver(() => fluid.resize());
     ro.observe(container);
 
+    const queue = [];
     let raf = 0;
-    const loop = () => { raf = requestAnimationFrame(loop); fluid.tick(); };
+    const loop = () => {
+      raf = requestAnimationFrame(loop);
+      for (const s of queue) fluid._applyScreenSplat(s);
+      queue.length = 0;
+      fluid.tick();
+    };
     raf = requestAnimationFrame(loop);
 
     return {
       config,
       get simMs() { return fluid.simMs(); },
       _rawSplat: fluid.rawSplat,
+      splat(x, y, dx, dy, color) {
+        queue.push({ x, y, dx, dy, color: color || heatColor(0.5) });
+      },
       destroy() {
         cancelAnimationFrame(raf); ro.disconnect();
         fluid.gl.getExtension('WEBGL_lose_context')?.loseContext();
