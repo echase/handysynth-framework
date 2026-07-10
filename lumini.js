@@ -60,6 +60,15 @@ export function screenToGL(x, y, dx, dy) {
   return { x, y: 1 - y, dx, dy: -dy };
 }
 
+// Callers pass velocity in units/sec; the Dobryakov core was tuned for
+// per-frame deltas (Lumora: tip.x - prev.x, no /dt). VEL_TO_DELTA converts
+// at a 60 fps reference so SPLAT_FORCE keeps its Lumora-calibrated meaning.
+export const VEL_TO_DELTA = 1 / 60;
+
+export function splatMomentum(v, force) {
+  return v * force * VEL_TO_DELTA;
+}
+
 export const PRESETS = {
   classic: Object.freeze({
     SIM_RESOLUTION: 128, DYE_RESOLUTION: 1024,
@@ -1384,7 +1393,7 @@ function _rawSplat (x, y, dx, dy, color) {
 }
 
 function _applyScreenSplat({ x, y, dx, dy, color }) {
-    const g = screenToGL(x, y, dx * config.SPLAT_FORCE, dy * config.SPLAT_FORCE);
+    const g = screenToGL(x, y, splatMomentum(dx, config.SPLAT_FORCE), splatMomentum(dy, config.SPLAT_FORCE));
     _rawSplat(g.x, g.y, g.dx, g.dy, color);
 }
 

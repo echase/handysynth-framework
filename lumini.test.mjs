@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   LUMINI_VERSION, OneEuro, heatColor, smoothEnergy, screenToGL, PRESETS,
+  VEL_TO_DELTA, splatMomentum,
 } from './lumini.js';
 
 test('version constant exported', () => {
@@ -45,4 +46,10 @@ test('presets are frozen and mobile is cheaper', () => {
   assert.ok(Object.isFrozen(PRESETS.classic));
   assert.ok(PRESETS.ember.DYE_RESOLUTION < PRESETS.classic.DYE_RESOLUTION);
   assert.equal(PRESETS.ember.BLOOM, false);
+});
+
+test('splatMomentum converts u/s velocity to Lumora per-frame-delta force', () => {
+  assert.equal(VEL_TO_DELTA, 1 / 60);
+  assert.equal(splatMomentum(0.6, 6000), 60);   // 0.6 u/s ≈ 0.01/frame × 6000
+  assert.equal(splatMomentum(-0.12, 6000), -12);
 });
