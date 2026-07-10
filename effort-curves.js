@@ -105,6 +105,12 @@ export class EffortCurves {
 
 // Detects rhythmic 1-D oscillation (flutter/tremolo band, default 3.5–9 Hz)
 // via direction reversals on a lightly smoothed signal. Landmark-agnostic.
+//
+// Param coupling: `windowMs` only bounds the extrema history behind the
+// rate/amp estimate. Deactivation on stillness is governed by the separate
+// reversal-recency guard below — one full period at `minHz` (~286ms at the
+// default 3.5) since the last direction reversal. Raising `windowMs` does
+// NOT lengthen tolerance of mid-gesture pauses; lower `minHz` for that.
 export class OscillationDetector {
   constructor({ minHz = 3.5, maxHz = 9, minAmp = 0.008, windowMs = 900 } = {}) {
     Object.assign(this, { minHz, maxHz, minAmp, windowMs });
@@ -149,6 +155,8 @@ export class OscillationDetector {
     // turning points with fresh flat samples). If no reversal has landed
     // recently — within one period at the slowest band rate — there is no
     // live oscillation to report, whatever the window still contains.
+    // NOTE: this guard, not `windowMs`, sets the deactivation latency
+    // (1000/minHz ms); see the param-coupling note in the class header.
     const recentlyReversing = (t - this._lastReversal) <= 1000 / this.minHz;
     if (ex.length >= 5 && recentlyReversing) {
       const spans = []; let lo = Infinity, hi = -Infinity;
