@@ -1,7 +1,7 @@
 // handysynth-foundation/effort-curves.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { EffortCurves, EFFORT_CURVES_VERSION } from './effort-curves.js';
+import { EffortCurves, OscillationDetector, EFFORT_CURVES_VERSION } from './effort-curves.js';
 
 const pt = (x, y) => ({ x, y, visible: true });
 
@@ -56,4 +56,37 @@ test('invisible point coasts — no phantom onset on reappear-in-place', () => {
   ec.feed({ a: { x: 0.5, y: 0.5, visible: false } }, 31 * 33);
   const out = ec.feed({ a: pt(0.5, 0.5) }, 32 * 33);
   assert.equal(out.onsets.length, 0);
+});
+
+test('version bumped', () => assert.equal(EFFORT_CURVES_VERSION, '0.2.0'));
+
+function drive(od, fn, ms, dt = 16.7) {
+  let out;
+  for (let t = 0; t <= ms; t += dt) out = od.feed(fn(t / 1000), t);
+  return out;
+}
+test('6 Hz flutter → active, rate in band', () => {
+  const od = new OscillationDetector();
+  const out = drive(od, s => 0.5 + 0.02 * Math.sin(2 * Math.PI * 6 * s), 1200);
+  assert.equal(out.active, true);
+  assert.ok(out.rate > 4.8 && out.rate < 7.2, `rate=${out.rate}`);
+  assert.ok(out.amp > 0.015);
+});
+test('2 Hz sway → inactive (below band)', () => {
+  const od = new OscillationDetector();
+  assert.equal(drive(od, s => 0.5 + 0.05 * Math.sin(2 * Math.PI * 2 * s), 1500).active, false);
+});
+test('12 Hz jitter → inactive (above band)', () => {
+  const od = new OscillationDetector();
+  assert.equal(drive(od, s => 0.5 + 0.02 * Math.sin(2 * Math.PI * 12 * s), 1200).active, false);
+});
+test('sub-amplitude tremor → inactive', () => {
+  const od = new OscillationDetector();
+  assert.equal(drive(od, s => 0.5 + 0.003 * Math.sin(2 * Math.PI * 6 * s), 1200).active, false);
+});
+test('stillness after flutter deactivates', () => {
+  const od = new OscillationDetector();
+  drive(od, s => 0.5 + 0.02 * Math.sin(2 * Math.PI * 6 * s), 1000);
+  const out = drive(od, () => 0.5, 600);
+  assert.equal(out.active, false);
 });

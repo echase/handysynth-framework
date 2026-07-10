@@ -2,6 +2,10 @@
 
 Shared module, versioned per ADR 009 axis B (`EFFORT_CURVES_VERSION` constant).
 
+## v0.2.0 — 2026-07-10
+
+- Add `OscillationDetector`: rhythmic 1-D oscillation (flutter/tremolo) detection over a 3.5–9 Hz band, for iterative excitation gestures
+
 ## v0.1.0 — 2026-06-12
 
 - Initial release: per-point speed/jerk, aggregate energy, smoothness,

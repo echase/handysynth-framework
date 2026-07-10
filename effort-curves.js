@@ -18,7 +18,7 @@
  *   // f = { points: {name: {speed, vx, vy}}, energy, smoothness,
  *   //       stillness, onsets: [{point, mag}] }
  */
-export const EFFORT_CURVES_VERSION = '0.1.0';
+export const EFFORT_CURVES_VERSION = '0.2.0';
 
 const DEFAULTS = {
   emaSpeed:    0.3,    // per-point speed EMA factor
@@ -100,5 +100,66 @@ export class EffortCurves {
       points_out[name] = { speed: s.speed, vx: s.vx, vy: s.vy };
     return { points: points_out, energy: this.energy,
              smoothness: this.smoothness, stillness: this.stillness, onsets };
+  }
+}
+
+// Detects rhythmic 1-D oscillation (flutter/tremolo band, default 3.5–9 Hz)
+// via direction reversals on a lightly smoothed signal. Landmark-agnostic.
+export class OscillationDetector {
+  constructor({ minHz = 3.5, maxHz = 9, minAmp = 0.008, windowMs = 900 } = {}) {
+    Object.assign(this, { minHz, maxHz, minAmp, windowMs });
+    this._ema = null; this._dir = 0; this._extrema = []; // {t, v}
+    this._lastRaw = null; this._clock = 0; // internal monotonic clock, driven by elapsed dt
+    this._lastReversal = 0; // clock time of the most recent confirmed direction reversal
+  }
+  feed(value, now) {
+    // Derive elapsed time from the delta between calls rather than trusting
+    // `now` as an absolute clock — callers may restart their timestamp origin
+    // (e.g. per-gesture), and a raw-`now` window would never prune stale
+    // extrema across such a reset. A non-positive delta (reset or duplicate
+    // timestamp) contributes zero elapsed time instead of going backwards.
+    if (this._lastRaw === null) this._clock = 0;
+    else this._clock += Math.max(0, now - this._lastRaw);
+    this._lastRaw = now;
+    const t = this._clock;
+
+    this._ema = this._ema === null ? value : this._ema + 0.5 * (value - this._ema);
+    const v = this._ema;
+    const ex = this._extrema;
+    if (ex.length === 0) {
+      ex.push({ t, v });
+      this._lastReversal = t;
+    } else {
+      const last = ex[ex.length - 1];
+      const dir = Math.sign(v - last.v);
+      if (dir !== 0 && this._dir !== 0 && dir !== this._dir) {
+        // reversal: `last` is now a finalized extremum — start a new leg
+        ex.push({ t, v });
+        this._lastReversal = t;
+      } else {
+        // continuation (or first-ever move from dir=0): extend current leg's endpoint
+        last.t = t; last.v = v;
+      }
+      if (dir !== 0) this._dir = dir;
+    }
+    while (ex.length && t - ex[0].t > this.windowMs) ex.shift();
+    let active = false, rate = 0, amp = 0;
+    // Stale guard: the window can still hold extrema from an oscillation that
+    // has since stopped (the in-progress leg just keeps extending, mixing old
+    // turning points with fresh flat samples). If no reversal has landed
+    // recently — within one period at the slowest band rate — there is no
+    // live oscillation to report, whatever the window still contains.
+    const recentlyReversing = (t - this._lastReversal) <= 1000 / this.minHz;
+    if (ex.length >= 5 && recentlyReversing) {
+      const spans = []; let lo = Infinity, hi = -Infinity;
+      for (let i = 1; i < ex.length; i++) spans.push(ex[i].t - ex[i - 1].t);
+      for (const e of ex) { lo = Math.min(lo, e.v); hi = Math.max(hi, e.v); }
+      spans.sort((a, b) => a - b);
+      const half = spans[Math.floor(spans.length / 2)]; // median half-period ms
+      rate = half > 0 ? 1000 / (2 * half) : 0;
+      amp = (hi - lo) / 2;
+      active = rate >= this.minHz && rate <= this.maxHz && amp >= this.minAmp;
+    }
+    return { active, rate, amp };
   }
 }
