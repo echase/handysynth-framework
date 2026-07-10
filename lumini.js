@@ -52,8 +52,12 @@ export function heatColor(t) {
   };
 }
 
-export function smoothEnergy(prev, target, coef) {
-  return clamp01(prev + (target - prev) * coef);
+// Asymmetric one-pole: fast attack (~30 ms at 0.5/frame), slower release
+// (~250 ms at 0.06/frame). Envelopes are smoothed; events (R2) never are.
+export function smoothEnergy(prev, target, attack, release) {
+  const t = clamp01(target);
+  const coef = t > prev ? attack : (release ?? attack);
+  return clamp01(prev + (t - prev) * coef);
 }
 
 export function screenToGL(x, y, dx, dy) {
@@ -1584,7 +1588,7 @@ export const Lumini = {
           }
         }
 
-        energyNow = smoothEnergy(energyNow, energyTarget, 0.1); // ~150ms
+        energyNow = smoothEnergy(energyNow, energyTarget, 0.5, 0.06); // ~30ms attack / ~250ms release
         liveConfig.CURL = baseCurl + energyNow * 25;
         liveConfig.VELOCITY_DISSIPATION = Math.max(0.05, baseDiss - energyNow * 0.15);
       }

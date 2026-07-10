@@ -33,9 +33,18 @@ test('heatColor brightness increases monotonically with t', () => {
 });
 
 test('smoothEnergy moves toward target and clamps', () => {
-  assert.ok(Math.abs(smoothEnergy(0, 1, 0.1) - 0.1) < 1e-9);
-  assert.equal(smoothEnergy(0.98, 5, 0.5), 1); // target clamped, output clamped
-  assert.equal(smoothEnergy(-3, 0, 0.5), 0);
+  assert.ok(Math.abs(smoothEnergy(0, 1, 0.1, 0.1) - 0.1) < 1e-9);
+  // Brief deviation (Task 3): target is clamped BEFORE blending (see impl),
+  // so 0.98 -> clamp01(5)=1 at coef 0.5 lands at 0.99, not 1 (no overshoot
+  // to clamp against). Corrected from the brief's literal `1`.
+  assert.equal(smoothEnergy(0.98, 5, 0.5, 0.5), 0.99); // target clamped, output clamped
+  assert.equal(smoothEnergy(-3, 0, 0.5, 0.5), 0);
+});
+
+test('smoothEnergy attacks faster than it releases', () => {
+  assert.ok(Math.abs(smoothEnergy(0, 1, 0.5, 0.06) - 0.5) < 1e-9);   // rising → attack coef
+  assert.ok(Math.abs(smoothEnergy(1, 0, 0.5, 0.06) - 0.94) < 1e-9);  // falling → release coef
+  assert.equal(smoothEnergy(0, 1, 0.5), 0.5);                        // 3-arg back-compat
 });
 
 test('screenToGL flips y and dy only', () => {
