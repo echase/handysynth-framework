@@ -29,7 +29,7 @@ sweep reads it instead of re-deriving it every time.
 | Variant | Architecture | Lines | Notes |
 |---------|--------------|------:|-------|
 | air-guitar | `class-expanded` | 1163 | |
-| augury | `class-minified` | 1661 | Only remaining minified build; minified anchors required |
+| augury | `class-expanded` | 2358 | **Was `class-minified`; de-minified (prettier) at v2.6, 2026-07-10** — standard multi-line anchors now apply; no minified variants remain |
 | crystal-harp | `class-expanded` | 1611 | |
 | drift | `class-expanded` | 1312 | |
 | drumspace | `flat-module` | 1420 | Percussion; no pitch axis — many polish concerns are N-A |
