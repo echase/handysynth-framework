@@ -60,6 +60,16 @@ export function smoothEnergy(prev, target, attack, release) {
   return clamp01(prev + (t - prev) * coef);
 }
 
+// Sound-gated hub (R5): energy = transient loudness, grit = sustained drive
+// baseline. Dissipation is deliberately absent — audio injects energy, the
+// fluid owns its decay; constant dissipation reads as breathing.
+export function hubConfig(energy, grit, baseCurl, baseBloom) {
+  return {
+    CURL: baseCurl + clamp01(grit) * 8 + clamp01(energy) * 30,
+    BLOOM_INTENSITY: baseBloom + clamp01(energy) * 0.65,
+  };
+}
+
 export function screenToGL(x, y, dx, dy) {
   return { x, y: 1 - y, dx, dy: -dy };
 }
@@ -76,18 +86,18 @@ export function splatMomentum(v, force) {
 export const PRESETS = {
   classic: Object.freeze({
     SIM_RESOLUTION: 128, DYE_RESOLUTION: 1024,
-    DENSITY_DISSIPATION: 1.0, VELOCITY_DISSIPATION: 0.25,
-    PRESSURE: 0.8, PRESSURE_ITERATIONS: 20, CURL: 30,
+    DENSITY_DISSIPATION: 1.0, VELOCITY_DISSIPATION: 0.28,
+    PRESSURE: 0.8, PRESSURE_ITERATIONS: 20, CURL: 8,
     SPLAT_RADIUS: 0.20, SPLAT_FORCE: 6000,
-    BLOOM: true, BLOOM_ITERATIONS: 8, BLOOM_INTENSITY: 0.8, BLOOM_THRESHOLD: 0.6,
+    BLOOM: true, BLOOM_ITERATIONS: 8, BLOOM_INTENSITY: 0.35, BLOOM_THRESHOLD: 0.6,
     SUNRAYS: false,
   }),
   ember: Object.freeze({
     SIM_RESOLUTION: 64, DYE_RESOLUTION: 512,
     DENSITY_DISSIPATION: 1.4, VELOCITY_DISSIPATION: 0.4,
-    PRESSURE: 0.8, PRESSURE_ITERATIONS: 12, CURL: 18,
+    PRESSURE: 0.8, PRESSURE_ITERATIONS: 12, CURL: 6,
     SPLAT_RADIUS: 0.25, SPLAT_FORCE: 6000,
-    BLOOM: false, BLOOM_ITERATIONS: 8, BLOOM_INTENSITY: 0.8, BLOOM_THRESHOLD: 0.6,
+    BLOOM: false, BLOOM_ITERATIONS: 8, BLOOM_INTENSITY: 0.35, BLOOM_THRESHOLD: 0.6,
     SUNRAYS: false,
   }),
 };
@@ -1530,8 +1540,8 @@ export const Lumini = {
     // variable above is a distinct object the sim never reads. Per-tick
     // writes (R5 energy mapping) must target fluid.config instead.
     const liveConfig = fluid.config;
-    const baseCurl = liveConfig.CURL, baseDiss = liveConfig.VELOCITY_DISSIPATION;
-    let energyTarget = 0, energyNow = 0;
+    const baseCurl = liveConfig.CURL, baseBloom = liveConfig.BLOOM_INTENSITY;
+    let energyTarget = 0, energyNow = 0, gritNow = 0;
 
     // R16 idle breathing: seeded Lissajous emitters keep the medium alive
     // when no input arrives, fading out on the first real splat.
@@ -1589,8 +1599,9 @@ export const Lumini = {
         }
 
         energyNow = smoothEnergy(energyNow, energyTarget, 0.5, 0.06); // ~30ms attack / ~250ms release
-        liveConfig.CURL = baseCurl + energyNow * 25;
-        liveConfig.VELOCITY_DISSIPATION = Math.max(0.05, baseDiss - energyNow * 0.15);
+        const hub = hubConfig(energyNow, gritNow, baseCurl, baseBloom);
+        liveConfig.CURL = hub.CURL;
+        liveConfig.BLOOM_INTENSITY = hub.BLOOM_INTENSITY;
       }
 
       // Always tick — createFluid's internal renderDirty logic handles
@@ -1605,6 +1616,8 @@ export const Lumini = {
       _rawSplat: fluid.rawSplat,
       set energy(v) { energyTarget = v; },
       get energy() { return energyNow; },
+      set grit(v) { gritNow = clamp01(v); },
+      get grit() { return gritNow; },
       get onContextLost() { return onContextLost; },
       set onContextLost(fn) { onContextLost = fn; },
       pause,

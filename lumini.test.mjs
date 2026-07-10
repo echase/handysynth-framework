@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   LUMINI_VERSION, OneEuro, heatColor, smoothEnergy, screenToGL, PRESETS,
-  VEL_TO_DELTA, splatMomentum,
+  VEL_TO_DELTA, splatMomentum, hubConfig,
 } from './lumini.js';
 
 test('version constant exported', () => {
@@ -61,4 +61,14 @@ test('splatMomentum converts u/s velocity to Lumora per-frame-delta force', () =
   assert.equal(VEL_TO_DELTA, 1 / 60);
   assert.equal(splatMomentum(0.6, 6000), 60);   // 0.6 u/s ≈ 0.01/frame × 6000
   assert.equal(splatMomentum(-0.12, 6000), -12);
+});
+
+test('hubConfig is laminar at rest, monotonic in energy and grit', () => {
+  const rest = hubConfig(0, 0, 8, 0.35);
+  assert.equal(rest.CURL, 8);
+  assert.equal(rest.BLOOM_INTENSITY, 0.35);
+  assert.ok(hubConfig(0.5, 0, 8, 0.35).CURL < hubConfig(1, 0, 8, 0.35).CURL);
+  assert.ok(hubConfig(0.5, 0, 8, 0.35).CURL < hubConfig(0.5, 1, 8, 0.35).CURL);
+  assert.equal(hubConfig(1, 1, 8, 0.35).CURL, 46);
+  assert.equal(hubConfig(1, 0, 8, 0.35).BLOOM_INTENSITY, 1.0);
 });
