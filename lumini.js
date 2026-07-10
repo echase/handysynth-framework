@@ -1,6 +1,6 @@
 // handysynth-foundation/lumini.js
 /**
- * Lumini v0.1.0 — bare-bones WebGL fluid feedback layer for HandySynth.
+ * Lumini v0.2.0 — bare-bones WebGL fluid feedback layer for HandySynth.
  *
  * Input-agnostic: any driver (MediaPipe hand/head, mouse, program code) calls
  *   lum.splat(x, y, dx, dy, color)   // screen-space, top-left, y DOWN
@@ -9,13 +9,13 @@
  * Lumini Recipe Book; R16 is internal. See spec 2026-07-07.
  *
  * Single-file variants inline a pinned copy (ADR 009): record the pin in the
- * variant changelog heading, e.g. `(lumini v0.1.0)`.
+ * variant changelog heading, e.g. `(lumini v0.2.0)`.
  *
  * Fluid core: Pavel Dobryakov's WebGL-Fluid-Simulation (MIT), lifted from
  * Lumora v0.35b. MacCormack advection dropped in v1.
  */
 
-export const LUMINI_VERSION = '0.1.0';
+export const LUMINI_VERSION = '0.2.0';
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
@@ -1591,9 +1591,9 @@ export const Lumini = {
             e.t += dt * (e.rate * 8);
             const ex = 0.5 + 0.35 * Math.sin(e.t * e.fx);
             const ey = 0.5 + 0.30 * Math.sin(e.t * e.fy + e.phase);
-            const vx = 0.35 * e.fx * Math.cos(e.t * e.fx);
-            const vy = 0.30 * e.fy * Math.cos(e.t * e.fy + e.phase);
-            const c = heatColor(0.25 * idleFade); // dim
+            const vx = 0.18 * e.fx * Math.cos(e.t * e.fx) * idleFade;
+            const vy = 0.15 * e.fy * Math.cos(e.t * e.fy + e.phase) * idleFade;
+            const c = heatColor(0.15 * idleFade); // embers under glass
             fluid._applyScreenSplat({ x: ex, y: ey, dx: vx, dy: vy, color: c });
           }
         }
