@@ -1,5 +1,33 @@
 # HandySynth Changelog
 
+## v1.2 — 2026-07-11
+
+### Fixes
+
+- **Camera left running after `destroy()`** — `destroy()` now stops every
+  track on the video element's `MediaStream` and clears `srcObject`. Previously
+  only the `AudioContext` was closed; the webcam indicator light stayed on
+  after teardown even though tracking had stopped.
+
+- **Dead audio-blocked retry** — the overlay's `touchend`/`pointerup`/`click`
+  listeners were `{once:true}`, so once the audio-blocked branch in `_start()`
+  re-showed the overlay for a retry tap, the listeners had already been
+  consumed and the retry tap did nothing. The listeners are now persistent
+  (added once in `mount()`, tracked via `this._startHandler`) and are
+  explicitly removed only once `_start()` confirms audio is running — the
+  point at which the overlay is hidden for good.
+
+- **Inverted hand roles for octave shift** — the MediaPipe handedness label
+  is read from the un-mirrored camera frame while the video/canvas are
+  displayed mirrored, so `label === 'Left'` was systematically backwards
+  relative to what the player sees, in addition to the label's existing
+  crossing/occlusion instability (concerns/two-hand-role-stability.md).
+  `leftOctaveShift`/`rightOctaveShift` role assignment now uses each hand's
+  on-screen (mirrored) wrist position instead of the label — the same
+  X-position pattern already applied in the `syrinx` variant per the concern
+  doc. `label` itself is unchanged and still keys `pinchState` and the `hand`
+  field in variant callback payloads.
+
 ## v1.1 — 2026-05-29
 
 ### Fixes

@@ -1,5 +1,5 @@
 /**
- * HandySynth Core Platform v1.1
+ * HandySynth Core Platform v1.2
  *
  * Reusable hand-tracking → gesture → audio/visual pipeline.
  * Variants implement the callback interface to build instruments.
@@ -265,11 +265,22 @@ export class HandySynth {
     // Overlay — if provided externally, attach gesture listeners.
     // touchend + pointerup capture mobile taps reliably on iOS Safari.
     // The _startCalled guard prevents double-fire when all three events land.
+    //
+    // Persistent (not {once:true}): the audio-blocked retry branch in
+    // _start() re-shows the overlay and expects another tap to re-invoke
+    // _start(). {once:true} listeners are consumed on the first tap, so a
+    // blocked-audio retry previously had nothing left to click — a dead
+    // overlay. The listeners are removed explicitly once _start() succeeds
+    // (see _start()).
     const overlayEl = domRefs.overlayEl;
     if (overlayEl) {
-      overlayEl.addEventListener('touchend', (e) => { e.preventDefault(); this._start(overlayEl); }, { once: true, passive: false });
-      overlayEl.addEventListener('pointerup', () => this._start(overlayEl), { once: true });
-      overlayEl.addEventListener('click',    () => this._start(overlayEl), { once: true });
+      this._startHandler = (e) => {
+        if (e.type === 'touchend') e.preventDefault();
+        this._start(overlayEl);
+      };
+      overlayEl.addEventListener('touchend', this._startHandler, { passive: false });
+      overlayEl.addEventListener('pointerup', this._startHandler);
+      overlayEl.addEventListener('click', this._startHandler);
     }
 
     // Resize
@@ -282,6 +293,12 @@ export class HandySynth {
     this._running = false;
     window.removeEventListener('resize', this._onResize);
     if (this._audioCtx) this._audioCtx.close();
+    // Stop the camera MediaStream — without this the webcam indicator light
+    // stays on after teardown even though tracking/audio have stopped.
+    if (this._videoEl && this._videoEl.srcObject) {
+      this._videoEl.srcObject.getTracks().forEach(t => t.stop());
+      this._videoEl.srcObject = null;
+    }
     if (this.variant.onDestroy) this.variant.onDestroy();
   }
 
@@ -301,6 +318,16 @@ export class HandySynth {
       this._startCalled = false;
       if (overlayEl) overlayEl.classList.remove('hidden');
       return;
+    }
+
+    // Audio unlocked — overlay is hidden for good from here on. The gesture
+    // listeners were kept persistent (not {once:true}) specifically so the
+    // audio-blocked branch above could retry; now that startup is proceeding,
+    // remove them.
+    if (overlayEl && this._startHandler) {
+      overlayEl.removeEventListener('touchend', this._startHandler);
+      overlayEl.removeEventListener('pointerup', this._startHandler);
+      overlayEl.removeEventListener('click', this._startHandler);
     }
 
     // 2. Notify variant
@@ -481,8 +508,21 @@ export class HandySynth {
       this._currentHands.forEach(hand => {
         const lms   = hand.landmarks;
         const label = hand.label;
-        const isLeft = label === 'Left';
         const depth  = hand.depth;
+        // Octave-shift role by on-screen (mirrored) position, not the
+        // MediaPipe handedness label. `label` is read from the un-mirrored
+        // frame while the video/canvas are displayed mirrored (see mount()'s
+        // `scaleX(-1)` and the `cx = (1 - tip.x) * W` below), so it is
+        // systematically inverted relative to what the user sees — and, per
+        // concerns/two-hand-role-stability.md, label-based role assignment
+        // also flips transiently when hands cross or briefly occlude. The
+        // wrist (landmark 0) gives a stable per-hand screen position; this
+        // mirrors syrinx's canonical X-sort pattern for two-hand variants
+        // whose roles map cleanly to left/right screen position. `label`
+        // itself is left untouched — it still keys `pinchState` and the
+        // `hand` field in variant payloads, both a documented cross-variant
+        // contract this fix does not change.
+        const isLeft = (1 - lms[0].x) < 0.5;
 
         FINGER_TIPS.forEach((tipIdx, fi) => {
           const key  = `${label}_${fi}`;
