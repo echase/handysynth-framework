@@ -18,7 +18,7 @@
  *   // f = { points: {name: {speed, vx, vy}}, energy, smoothness,
  *   //       stillness, onsets: [{point, mag}] }
  */
-export const EFFORT_CURVES_VERSION = '0.2.0';
+export const EFFORT_CURVES_VERSION = '0.2.1';
 
 const DEFAULTS = {
   emaSpeed:    0.3,    // per-point speed EMA factor
@@ -42,21 +42,41 @@ export class EffortCurves {
     this.stillness = 0;
     this._stillSince = null;
     this._lastNow = null;
+    this._lastOutput = null;
   }
 
   feed(points, now) {
     // Per-frame model, intentionally NOT time-normalized: vx/vy/speed are raw
     // position deltas per feed() call, assuming a fixed-cadence tracking loop.
     // dt is reserved for a future time-normalized mode and unused today.
-    const dt = this._lastNow === null ? 33 : Math.max(1, now - this._lastNow);
+    //
+    // Guard against a backwards/reset `now` (callers restarting their
+    // timestamp origin, or a jittery clock source): `now` is also used as an
+    // absolute reference for `_stillSince` and per-point `lastOnset`, so a
+    // regression there would otherwise produce a negative stillness delta and
+    // spuriously suppress onsets until the clock "catches back up". Resync
+    // and hold the previous output for that one frame instead of integrating.
+    if (this._lastNow !== null) {
+      const dtRaw = now - this._lastNow;
+      if (!Number.isFinite(dtRaw) || dtRaw <= 0) {
+        this._lastNow = now;
+        this._stillSince = null;
+        for (const s of this.pts.values()) s.lastOnset = -Infinity;
+        return this._lastOutput || { points: {}, energy: this.energy,
+          smoothness: this.smoothness, stillness: this.stillness, onsets: [] };
+      }
+    }
     this._lastNow = now;
     const onsets = [];
     let speedSum = 0, jerkSum = 0, n = 0;
 
     for (const [name, s] of this.pts) {
       const p = points[name];
-      if (!p || p.visible === false) {
-        // Coast: hold position, bleed speed, re-arm cleanly on reappear
+      if (!p || p.visible === false || !Number.isFinite(p.x) || !Number.isFinite(p.y)) {
+        // Coast: hold position, bleed speed, re-arm cleanly on reappear.
+        // A non-finite coordinate is treated the same as invisible so it
+        // never enters the smoothing state (NaN would otherwise poison
+        // `speed`/`energy` permanently via the EMA).
         s.speed *= 0.8; s.seen = false;
         continue;
       }
@@ -98,8 +118,10 @@ export class EffortCurves {
     const points_out = {};
     for (const [name, s] of this.pts)
       points_out[name] = { speed: s.speed, vx: s.vx, vy: s.vy };
-    return { points: points_out, energy: this.energy,
+    const result = { points: points_out, energy: this.energy,
              smoothness: this.smoothness, stillness: this.stillness, onsets };
+    this._lastOutput = result;
+    return result;
   }
 }
 

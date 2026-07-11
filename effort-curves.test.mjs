@@ -58,7 +58,25 @@ test('invisible point coasts — no phantom onset on reappear-in-place', () => {
   assert.equal(out.onsets.length, 0);
 });
 
-test('version bumped', () => assert.equal(EFFORT_CURVES_VERSION, '0.2.0'));
+test('non-finite coordinate does not poison energy', () => {
+  const ec = new EffortCurves(['a']);
+  let now = 0, out;
+  for (let i = 0; i < 30; i++) { now += 33; out = ec.feed({ a: pt(0.5, 0.5) }, now); }
+  now += 33; ec.feed({ a: { x: NaN, y: 0.5, visible: true } }, now);
+  for (let i = 0; i < 30; i++) { now += 33; out = ec.feed({ a: pt(0.5, 0.5) }, now); }
+  assert.ok(Number.isFinite(out.energy), `energy poisoned: ${out.energy}`);
+});
+test('backwards timestamp does not produce negative stillness', () => {
+  const ec = new EffortCurves(['a']);
+  let now = 0, out;
+  for (let i = 0; i < 60; i++) { now += 33; out = ec.feed({ a: pt(0.5, 0.5) }, now); }
+  now = 0; // clock reset
+  for (let i = 0; i < 60; i++) { now += 33; out = ec.feed({ a: pt(0.5, 0.5) }, now); }
+  assert.ok(out.stillness >= 0, `negative stillness: ${out.stillness}`);
+  assert.ok(Number.isFinite(out.energy));
+});
+
+test('version bumped', () => assert.equal(EFFORT_CURVES_VERSION, '0.2.1'));
 
 function drive(od, fn, ms, dt = 16.7) {
   let out;
