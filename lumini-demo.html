@@ -52,10 +52,15 @@
   const layerBtn = document.getElementById('layerToggle');
   let layer = 'under';
   let lum;
+  // Task 4 (v0.4.0): ?contain=1 confines the fluid to a centered circular vessel.
+  const CONTAIN = new URLSearchParams(location.search).get('contain') === '1';
 
   function mountLumini() {
     if (lum) lum.destroy();
-    lum = Lumini.mount(stage, { preset: 'classic', layer });
+    lum = Lumini.mount(stage, {
+      preset: 'classic', layer,
+      ...(CONTAIN ? { containment: { x: 0.5, y: 0.5, r: 0.42, feather: 0.02 } } : {}),
+    });
     layerBtn.textContent = 'layer: ' + layer;
   }
   mountLumini();
