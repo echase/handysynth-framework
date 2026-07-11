@@ -3,7 +3,8 @@
  * Lumini v0.2.0 — bare-bones WebGL fluid feedback layer for HandySynth.
  *
  * Input-agnostic: any driver (MediaPipe hand/head, mouse, program code) calls
- *   lum.splat(x, y, dx, dy, color)   // screen-space, top-left, y DOWN
+ *   lum.splat(x, y, dx, dy, color, radius)   // screen-space, top-left, y DOWN
+ *       radius optional per-splat override (v0.3.0), preset SPLAT_RADIUS units
  * Recipes (R1 wake trails, R2 pluck bursts, R3 sustain bleed, R5 loudness
  * turbulence, R16 idle breathing) are host-side choreography documented in the
  * Lumini Recipe Book; R16 is internal. See spec 2026-07-07.
@@ -15,7 +16,7 @@
  * Lumora v0.35b. MacCormack advection dropped in v1.
  */
 
-export const LUMINI_VERSION = '0.2.0';
+export const LUMINI_VERSION = '0.3.0';
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
@@ -81,6 +82,12 @@ export const VEL_TO_DELTA = 1 / 60;
 
 export function splatMomentum(v, force) {
   return v * force * VEL_TO_DELTA;
+}
+
+// Per-splat radius override (v0.3.0): explicit positive radius wins,
+// anything falsy/non-positive falls back to the preset SPLAT_RADIUS.
+export function resolveSplatRadius(radius, fallback) {
+  return radius > 0 ? radius : fallback;
 }
 
 export const PRESETS = {
@@ -1386,7 +1393,7 @@ function blur (target, temp, iterations) {
     }
 }
 
-function _rawSplat (x, y, dx, dy, color) {
+function _rawSplat (x, y, dx, dy, color, radius) {
     // Zero-size canvas (hidden container / pre-layout) → aspectRatio 0/0 = NaN,
     // which poisons dye/velocity permanently (resizeDoubleFBO carries old texels forward).
     if (canvas.width === 0 || canvas.height === 0) return;
@@ -1396,7 +1403,7 @@ function _rawSplat (x, y, dx, dy, color) {
     gl.uniform1f(splatProgram.uniforms.aspectRatio, canvas.width / canvas.height);
     gl.uniform2f(splatProgram.uniforms.point, x, y);
     gl.uniform3f(splatProgram.uniforms.color, dx, dy, 0.0);
-    gl.uniform1f(splatProgram.uniforms.radius, correctRadius(config.SPLAT_RADIUS / 100.0));
+    gl.uniform1f(splatProgram.uniforms.radius, correctRadius(resolveSplatRadius(radius, config.SPLAT_RADIUS) / 100.0));
     blit(velocity.write);
     velocity.swap();
 
@@ -1406,9 +1413,9 @@ function _rawSplat (x, y, dx, dy, color) {
     dye.swap();
 }
 
-function _applyScreenSplat({ x, y, dx, dy, color }) {
+function _applyScreenSplat({ x, y, dx, dy, color, radius }) {
     const g = screenToGL(x, y, splatMomentum(dx, config.SPLAT_FORCE), splatMomentum(dy, config.SPLAT_FORCE));
-    _rawSplat(g.x, g.y, g.dx, g.dy, color);
+    _rawSplat(g.x, g.y, g.dx, g.dy, color, radius);
 }
 
 function correctRadius (radius) {
@@ -1622,9 +1629,9 @@ export const Lumini = {
       set onContextLost(fn) { onContextLost = fn; },
       pause,
       resume,
-      splat(x, y, dx, dy, color) {
+      splat(x, y, dx, dy, color, radius) {
         lastInput = performance.now();
-        queue.push({ x, y, dx, dy, color: color || heatColor(0.5) });
+        queue.push({ x, y, dx, dy, color: color || heatColor(0.5), radius });
       },
       destroy() {
         cancelAnimationFrame(raf); ro.disconnect();

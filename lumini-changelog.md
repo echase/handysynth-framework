@@ -1,5 +1,11 @@
 # Lumini — Changelog
 
+## v0.3.0 — 2026-07-11
+
+Per-splat radius: `splat(x, y, dx, dy, color, radius?)` — optional override in
+SPLAT_RADIUS preset units via `resolveSplatRadius(radius, fallback)`; omitted ⇒
+preset value (v0.2.0-identical). Shared task with the TuneFlow plan.
+
 ## v0.2.0 — 2026-07-10
 
 Sound-gated medium retune (spec `2026-07-10-lumini-musical-dynamics-design`).

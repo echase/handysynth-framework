@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   LUMINI_VERSION, OneEuro, heatColor, smoothEnergy, screenToGL, PRESETS,
-  VEL_TO_DELTA, splatMomentum, hubConfig,
+  VEL_TO_DELTA, splatMomentum, hubConfig, resolveSplatRadius,
 } from './lumini.js';
 
 test('version constant exported', () => {
@@ -71,4 +71,11 @@ test('hubConfig is laminar at rest, monotonic in energy and grit', () => {
   assert.ok(hubConfig(0.5, 0, 8, 0.35).CURL < hubConfig(0.5, 1, 8, 0.35).CURL);
   assert.equal(hubConfig(1, 1, 8, 0.35).CURL, 46);
   assert.equal(hubConfig(1, 0, 8, 0.35).BLOOM_INTENSITY, 1.0);
+});
+
+test('resolveSplatRadius: explicit radius wins, undefined/null/0 fall back', () => {
+  assert.equal(resolveSplatRadius(0.4, 0.25), 0.4);
+  assert.equal(resolveSplatRadius(undefined, 0.25), 0.25);
+  assert.equal(resolveSplatRadius(null, 0.25), 0.25);
+  assert.equal(resolveSplatRadius(0, 0.25), 0.25);
 });
