@@ -90,6 +90,37 @@ export function resolveSplatRadius(radius, fallback) {
   return radius > 0 ? radius : fallback;
 }
 
+// ── Circular containment (v0.4.0) ────────────────────────────────────────
+// Analytic circle wall: velocity loses its outward-normal component in a
+// feather band inside the rim (slip wall) and is hard-damped outside; the
+// display pass masks dye at the same rim. Pure math here is mirrored 1:1
+// by containShader — change both together or not at all.
+
+// Signed distance (negative inside) + outward unit normal, in
+// aspect-corrected UV space (x pre-scaled by aspect so circles stay round).
+export function circleSDF(px, py, cx, cy, r, aspect) {
+  const dx = (px - cx) * aspect;
+  const dy = py - cy;
+  const len = Math.hypot(dx, dy);
+  return {
+    d: len - r,
+    nx: len > 1e-5 ? dx / len : 0,
+    ny: len > 1e-5 ? dy / len : 0,
+  };
+}
+
+// Slip-wall correction on aspect-corrected velocity. Inward flow is never
+// blocked; tangential flow survives the wall (fluid slides along the rim).
+export function containVelocity(vx, vy, d, nx, ny, feather) {
+  if (d > 0) return { vx: vx * 0.05, vy: vy * 0.05 };        // strictly outside: kill
+                                                             // (d===0 is the rim → slip-wall below)
+  const wall = Math.min(1, Math.max(0, 1 + d / feather));     // 0 deep → 1 at rim
+  if (wall === 0) return { vx, vy };
+  const outward = vx * nx + vy * ny;
+  if (outward <= 0) return { vx, vy };
+  return { vx: vx - nx * outward * wall, vy: vy - ny * outward * wall };
+}
+
 export const PRESETS = {
   classic: Object.freeze({
     SIM_RESOLUTION: 128, DYE_RESOLUTION: 1024,
