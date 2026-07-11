@@ -17,7 +17,7 @@
  * Lumora v0.35b. MacCormack advection dropped in v1.
  */
 
-export const LUMINI_VERSION = '0.4.0';
+export const LUMINI_VERSION = '0.4.1';
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
@@ -1052,11 +1052,19 @@ function initFramebuffers () {
     else
         velocity = resizeDoubleFBO(velocity, simRes.width, simRes.height, rg.internalFormat, rg.format, texType, filtering);
 
+    // divergence/curl/pressure/mcVelTemp have no persistent-content reason to
+    // survive a resize (unlike dye/velocity, which resizeDoubleFBO carries
+    // forward) — dispose the previous GPU resources before recreating so a
+    // resize doesn't leak a full set of textures/FBOs every time.
+    if (divergence != null) disposeFBO(divergence);
     divergence = createFBO      (simRes.width, simRes.height, r.internalFormat, r.format, texType, gl.NEAREST);
+    if (curl != null) disposeFBO(curl);
     curl       = createFBO      (simRes.width, simRes.height, r.internalFormat, r.format, texType, gl.NEAREST);
+    if (pressure != null) { disposeFBO(pressure.read); disposeFBO(pressure.write); }
     pressure   = createDoubleFBO(simRes.width, simRes.height, r.internalFormat, r.format, texType, gl.NEAREST);
 
     // Viscosity-solver scratch buffer — recreated on resize like divergence/curl
+    if (mcVelTemp != null) disposeFBO(mcVelTemp);
     mcVelTemp  = createFBO(simRes.width, simRes.height, rg.internalFormat, rg.format, texType, filtering);
 
     initBloomFramebuffers();
@@ -1070,8 +1078,14 @@ function initBloomFramebuffers () {
     const rgba = ext.formatRGBA;
     const filtering = ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST;
 
+    // Dispose the previous bloom chain before recreating it — this runs on
+    // every resize (initFramebuffers → initBloomFramebuffers), so without
+    // disposal each resize leaks the old bloom FBO plus every prior
+    // bloomFramebuffers[] entry.
+    if (bloom != null) disposeFBO(bloom);
     bloom = createFBO(res.width, res.height, rgba.internalFormat, rgba.format, texType, filtering);
 
+    for (const fbo of bloomFramebuffers) disposeFBO(fbo);
     bloomFramebuffers.length = 0;
     for (let i = 0; i < config.BLOOM_ITERATIONS; i++)
     {
@@ -1092,7 +1106,9 @@ function initSunraysFramebuffers () {
     const r = ext.formatR;
     const filtering = ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST;
 
+    if (sunrays != null) disposeFBO(sunrays);
     sunrays     = createFBO(res.width, res.height, r.internalFormat, r.format, texType, filtering);
+    if (sunraysTemp != null) disposeFBO(sunraysTemp);
     sunraysTemp = createFBO(res.width, res.height, r.internalFormat, r.format, texType, filtering);
 }
 
@@ -1195,6 +1211,9 @@ function resizeFBO (target, w, h, internalFormat, format, type, param) {
     copyProgram.bind();
     gl.uniform1i(copyProgram.uniforms.uTexture, target.attach(0));
     blit(newFBO);
+    // `target`'s content has been copied forward into newFBO — the old
+    // texture/framebuffer is now orphaned GPU state; dispose it.
+    disposeFBO(target);
     return newFBO;
 }
 
@@ -1202,6 +1221,9 @@ function resizeDoubleFBO (target, w, h, internalFormat, format, type, param) {
     if (target.width == w && target.height == h)
         return target;
     target.read = resizeFBO(target.read, w, h, internalFormat, format, type, param);
+    // The write buffer carries no content worth preserving, but the old one
+    // must still be disposed before being replaced or it leaks every resize.
+    disposeFBO(target.write);
     target.write = createFBO(w, h, internalFormat, format, type, param);
     target.width = w;
     target.height = h;
@@ -1673,11 +1695,12 @@ export const Lumini = {
     // Context loss: the sim is unrecoverable mid-loss, so stop ticking and
     // hand off to the host via the (re)assignable onContextLost callback.
     let onContextLost = opts.onContextLost || null;
-    canvas.addEventListener('webglcontextlost', (e) => {
+    const handleContextLost = (e) => {
       e.preventDefault();
       cancelAnimationFrame(raf);
       if (onContextLost) onContextLost();
-    });
+    };
+    canvas.addEventListener('webglcontextlost', handleContextLost);
 
     // pause/resume write the LIVE config (liveConfig === fluid.config, the
     // object createFluid's internal closures actually read) — mount's own
@@ -1743,6 +1766,12 @@ export const Lumini = {
       destroy() {
         cancelAnimationFrame(raf); ro.disconnect();
         document.removeEventListener('visibilitychange', onVisibilityChange);
+        // Intentional teardown: silence the context-lost path first. Without
+        // this, loseContext() below fires 'webglcontextlost' and the host's
+        // onContextLost callback reacts to a deliberate destroy() as if it
+        // were an unrecoverable GPU crash.
+        onContextLost = null;
+        canvas.removeEventListener('webglcontextlost', handleContextLost);
         fluid.gl.getExtension('WEBGL_lose_context')?.loseContext();
         canvas.remove();
       },

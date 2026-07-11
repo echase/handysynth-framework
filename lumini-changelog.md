@@ -1,5 +1,22 @@
 # Lumini — Changelog
 
+## v0.4.1 — 2026-07-11
+
+Fix: FBO/texture leak on every canvas resize. `initFramebuffers()` recreated
+`divergence`/`curl`/`pressure`/`mcVelTemp` and `initBloomFramebuffers()` /
+`initSunraysFramebuffers()` recreated `bloom`/`bloomFramebuffers[]`/`sunrays`/
+`sunraysTemp` via `createFBO`/`createDoubleFBO` with no disposal of the
+previous GPU resources; `resizeFBO`/`resizeDoubleFBO` (the dye/velocity path)
+had the same gap for the outgoing FBO and the double-buffer's `write` slot.
+All six now call `disposeFBO` on the outgoing resource before replacing it
+(guarded for the first-init case where nothing exists yet).
+
+Fix: `destroy()` calling `loseContext()` fired `webglcontextlost`, which the
+host's `onContextLost` callback treated as an unrecoverable GPU crash rather
+than the intentional teardown it was. `destroy()` now nulls `onContextLost`
+and removes this module's `webglcontextlost` listener before calling
+`loseContext()`, so intentional teardown is silent.
+
 ## v0.4.0 — 2026-07-11
 
 Circular containment: `setContainment({x, y, r, feather?})` (screen-space,
