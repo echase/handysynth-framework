@@ -5,6 +5,7 @@
  * Input-agnostic: any driver (MediaPipe hand/head, mouse, program code) calls
  *   lum.splat(x, y, dx, dy, color, radius)   // screen-space, top-left, y DOWN
  *       radius optional per-splat override (v0.3.0), preset SPLAT_RADIUS units
+ *   lum.setContainment({x, y, r, feather?})  // circular vessel; null disables (v0.4.0)
  * Recipes (R1 wake trails, R2 pluck bursts, R3 sustain bleed, R5 loudness
  * turbulence, R16 idle breathing) are host-side choreography documented in the
  * Lumini Recipe Book; R16 is internal. See spec 2026-07-07.
@@ -16,7 +17,7 @@
  * Lumora v0.35b. MacCormack advection dropped in v1.
  */
 
-export const LUMINI_VERSION = '0.3.0';
+export const LUMINI_VERSION = '0.4.0';
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
@@ -184,6 +185,14 @@ function createFluid(canvas, config) {
       _canvasSize.h = r.height;
   }).observe(canvas);
   resizeCanvas();
+
+  // Circular containment (v0.4.0): screen-space {x, y, r, feather} or null.
+  // Stored in screen units; converted to GL UV at upload time so resize is free.
+  let containment = null;
+  function setContainment(c) {
+      containment = c ? { feather: 0.02, ...c } : null;
+      renderDirty = true;
+  }
 
   const { gl, ext } = getWebGLContext(canvas);
 
@@ -498,6 +507,9 @@ const displayShaderSource = `
     uniform sampler2D uDithering;
     uniform vec2 ditherScale;
     uniform vec2 texelSize;
+    uniform float uContain;      // 0 off / 1 on
+    uniform vec4 uContainC;      // center.xy (GL UV), radius, feather
+    uniform float uContainAspect;
 
     vec3 linearToGamma (vec3 color) {
         color = max(color, vec3(0));
@@ -542,6 +554,13 @@ const displayShaderSource = `
         bloom = linearToGamma(bloom);
         c += bloom;
     #endif
+
+        if (uContain > 0.5) {
+            vec2 cp = vUv - uContainC.xy;
+            cp.x *= uContainAspect;
+            float cd = length(cp) - uContainC.z;
+            c *= 1.0 - clamp(1.0 + cd / uContainC.w, 0.0, 1.0);
+        }
 
         float a = max(c.r, max(c.g, c.b));
         gl_FragColor = vec4(c, a);
@@ -677,6 +696,39 @@ const splatShader = compileShader(gl.FRAGMENT_SHADER, `
         vec3 splat = exp(-dot(p, p) / radius) * color;
         vec3 base = texture2D(uTarget, vUv).xyz;
         gl_FragColor = vec4(base + splat, 1.0);
+    }
+`);
+
+// Mirrors circleSDF + containVelocity exactly (see pure helpers above).
+// Boundary is d > 0.0 (strictly outside killed; rim itself slips) to match
+// the corrected containVelocity — keep both in lockstep.
+const containShader = compileShader(gl.FRAGMENT_SHADER, `
+    precision highp float;
+    precision highp sampler2D;
+
+    varying vec2 vUv;
+    uniform sampler2D uVelocity;
+    uniform float aspectRatio;
+    uniform vec2 center;     // GL UV (y up)
+    uniform float radius;    // aspect-corrected UV, height units
+    uniform float feather;
+
+    void main () {
+        vec2 v = texture2D(uVelocity, vUv).xy;
+        vec2 p = vUv - center;
+        p.x *= aspectRatio;
+        float len = length(p);
+        float d = len - radius;
+        vec2 n = len > 1e-5 ? p / len : vec2(0.0);
+        vec2 va = vec2(v.x * aspectRatio, v.y);
+        if (d > 0.0) {
+            va *= 0.05;
+        } else {
+            float wall = clamp(1.0 + d / feather, 0.0, 1.0);
+            float outward = dot(va, n);
+            if (outward > 0.0) va -= n * outward * wall;
+        }
+        gl_FragColor = vec4(va.x / aspectRatio, va.y, 0.0, 1.0);
     }
 `);
 
@@ -967,6 +1019,7 @@ const bloomFinalProgram      = new Program(baseVertexShader, bloomFinalShader);
 const sunraysMaskProgram     = new Program(baseVertexShader, sunraysMaskShader);
 const sunraysProgram         = new Program(baseVertexShader, sunraysShader);
 const splatProgram           = new Program(baseVertexShader, splatShader);
+const containProgram         = new Program(baseVertexShader, containShader);
 const advectionProgram       = new Program(baseVertexShader, advectionShader);
 const divergenceProgram      = new Program(baseVertexShader, divergenceShader);
 const curlProgram            = new Program(baseVertexShader, curlShader);
@@ -1275,6 +1328,20 @@ function step (dt) {
     blit(velocity.write);
     velocity.swap();
 
+    // Circular containment (v0.4.0): slip-wall re-projection after the pressure
+    // solve, before advection. Mirrors circleSDF + containVelocity.
+    if (containment) {
+        containProgram.bind();
+        const aspect = canvas.width / canvas.height;
+        gl.uniform1i(containProgram.uniforms.uVelocity, velocity.read.attach(0));
+        gl.uniform1f(containProgram.uniforms.aspectRatio, aspect);
+        gl.uniform2f(containProgram.uniforms.center, containment.x, 1.0 - containment.y);
+        gl.uniform1f(containProgram.uniforms.radius, containment.r);
+        gl.uniform1f(containProgram.uniforms.feather, containment.feather);
+        blit(velocity.write);
+        velocity.swap();
+    }
+
     // Plain single-pass advection (MacCormack path dropped — Task 2 lumini core).
     advectionProgram.bind();
     gl.uniform2f(advectionProgram.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
@@ -1342,6 +1409,12 @@ function drawDisplay (target) {
     if (config.SHADING)
         gl.uniform2f(displayMaterial.uniforms.texelSize, 1.0 / width, 1.0 / height);
     gl.uniform1i(displayMaterial.uniforms.uTexture, dye.read.attach(0));
+    gl.uniform1f(displayMaterial.uniforms.uContain, containment ? 1 : 0);
+    if (containment) {
+        gl.uniform4f(displayMaterial.uniforms.uContainC,
+            containment.x, 1.0 - containment.y, containment.r, containment.feather);
+        gl.uniform1f(displayMaterial.uniforms.uContainAspect, width / height);
+    }
     if (config.BLOOM) {
         gl.uniform1i(displayMaterial.uniforms.uBloom, bloom.attach(1));
         gl.uniform1i(displayMaterial.uniforms.uDithering, ditheringTexture.attach(2));
@@ -1542,6 +1615,7 @@ function hashCode (s) {
   return {
     rawSplat: _rawSplat,
     _applyScreenSplat,
+    setContainment,
     resize() {
       if (resizeCanvas()) {
         initFramebuffers();
@@ -1570,6 +1644,7 @@ export const Lumini = {
     container.appendChild(canvas);
 
     const fluid = createFluid(canvas, config);
+    if (opts.containment) fluid.setContainment(opts.containment);
     const ro = new ResizeObserver(() => fluid.resize());
     ro.observe(container);
 
@@ -1660,6 +1735,7 @@ export const Lumini = {
       set onContextLost(fn) { onContextLost = fn; },
       pause,
       resume,
+      setContainment(c) { fluid.setContainment(c); },
       splat(x, y, dx, dy, color, radius) {
         lastInput = performance.now();
         queue.push({ x, y, dx, dy, color: color || heatColor(0.5), radius });

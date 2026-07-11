@@ -1,5 +1,18 @@
 # Lumini — Changelog
 
+## v0.4.0 — 2026-07-11
+
+Circular containment: `setContainment({x, y, r, feather?})` (screen-space,
+height-fraction radius; also a mount opt) confines the fluid to an analytic
+circular vessel — slip-wall velocity pass after projection (outward component
+removed in a feather band, tangential preserved, strictly-outside hard-damped) +
+display rim mask on dye. Pure math exported (`circleSDF`, `containVelocity`) and
+mirrored by `containShader`; the slip-wall boundary is `d > 0` (rim itself slips)
+in both. Null/omitted ⇒ v0.3.0-identical. Known limits: pressure solve stays
+rectangular (wall is enforced per-frame re-projection, not in the Poisson step —
+visually correct, not physically exact); dye splatted outside the circle is
+masked, not simulated away.
+
 ## v0.3.0 — 2026-07-11
 
 Per-splat radius: `splat(x, y, dx, dy, color, radius?)` — optional override in
