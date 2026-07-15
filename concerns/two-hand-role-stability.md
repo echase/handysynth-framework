@@ -21,7 +21,7 @@ status:
   pulse: n/a
   pyrefey-original: applied@v3.1
   runecatch: needs-patch
-  stellar-conductor: needs-patch
+  stellar-conductor: applied@v1.8b
   synesthesia: needs-patch
   syrinx: applied@v1
   theremin: needs-patch
@@ -39,6 +39,14 @@ between two hands), `drift` (stereo hands), `augury` (different bird species per
 are N-A.
 
 ## Canonical source
+
+**2026-07-15: `site/handysynth/motion/motion.v1.js` v1.0.0 ships `createRoleTracker` (ADR 014)** — the
+position-sticky, label-preference-seeded lineage (stellar-conductor v1.8b `pickRoles`, itself ported from
+pulling-cliff), generalized from hardcoded `voice`/`off` names to configurable roles. This is the pin-and-inline
+canonical source for that pattern going forward. It does **not** replace air-guitar's separate
+energy+behavior+hysteresis approach below (role chosen by motion energy/behavior, not just position) — that
+remains a distinct pattern for variants that need behavior-based role choice; the canonical-source drift
+already flagged further down (committed file vs. this doc's snippet) still applies to it specifically.
 
 `site/handysynth/air-guitar/index.html` — persistent slots tracked by position + motion energy, role chosen
 by behavior, sticky with hysteresis.
@@ -85,9 +93,13 @@ N-A unless drumspace assigns distinct per-hand banks — confirm; its hits are l
   same bug a simpler way — it **sorts the two hands by X position** each frame instead of trusting the label.
   For variants whose roles map cleanly to left-vs-right screen position, syrinx's sort is a lighter alternative
   to air-guitar's energy-tracked slots. Worth promoting as a second canonical pattern.
-- **needs-patch / execute (2):** **theremin** (one hand pitch, other volume) and **stellar-conductor**
-  (left=density, right=tempo) — both select role by `handedness`; a label flip mid-performance swaps the two
-  control axes. Real latent bugs, highest value, recommend executing.
+- **applied@v1.8b (1):** **stellar-conductor** (left=density/ensemble, right=tempo/intensity) — ported
+  pulling-cliff's sticky position-slot `pickRoles()` (voice slot = baton hand, off slot = ensemble hand) **and**
+  routed the repurposed pinch (spawn / mutate / cull) through a per-frame `roleOfLabel` map so the summon
+  gesture follows the hand's stable role, not the flip-prone MediaPipe label.
+- **needs-patch / execute (1):** **theremin** (one hand pitch, other volume) — still selects role by
+  `handedness`; a label flip mid-performance swaps the two control axes. Real latent bug, highest remaining
+  value, recommend executing next.
 - **needs-patch / verify (1):** synesthesia — asymmetric two-hand mapping, latent but lower-exposure; confirm
   reproduction before patching.
 - **needs-patch / defer (1):** runecatch — has a two-hand path but the role distinction is weak; defer behind

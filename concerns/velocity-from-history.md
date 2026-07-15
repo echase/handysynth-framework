@@ -21,7 +21,7 @@ status:
   pulse: deferred
   pyrefey-original: applied@v3.1
   runecatch: applied
-  stellar-conductor: applied
+  stellar-conductor: applied@v1.8b
   synesthesia: needs-patch
   syrinx: n/a
   theremin: n/a
@@ -34,6 +34,10 @@ Sensitivity)**. The polish item says "do it"; this concern says "do it *this one
 divergent impls converge.
 
 ## Canonical pattern
+
+**2026-07-15: superseded by `site/handysynth/motion/motion.v1.js` v1.0.0 (`pushPos`/`velAt` exports, ADR
+014).** Pin the shared module rather than hand-inlining a fresh copy; the pattern below is unchanged and
+remains for provenance/history (motion.v1.js's version is byte-identical to this one).
 
 Push `{cx, cy, t}` per tracked key each frame; on note-on, compute speed over the buffer window, clear it.
 
@@ -57,7 +61,7 @@ function velAt(buf, key) {
 Reference implementations (diverged — to be reconciled to the above):
 - `augury` — `posHistory` + `FLICK_THRESHOLD = 600`, boolean flick at note-on.
 - `pulse` — `tipYHist[0..2]` 3-frame Y-only delta for strike velocity.
-- `stellar-conductor` — `distHistory[key][0..2]` pinch-distance velocity → attack intensity.
+- ~~`stellar-conductor` — `distHistory[key][0..2]` pinch-distance velocity~~ → **reconciled at v1.8b**: now uses the canonical `pushPos`/`velAt` positional helper (spawn energy from hand-motion speed at the summoning pinch, not pinch-approach distance).
 
 ## Recipe
 
@@ -79,7 +83,8 @@ canonical `velAt`.
 
 ## Sweep findings (2026-06-04)
 
-- **applied (3):** augury & stellar-conductor (canonical reference impls); runecatch carries its own divergent
+- **applied (3):** augury (canonical reference impl); stellar-conductor (was a divergent `distHistory` reference
+  impl — **reconciled to the canonical `pushPos`/`velAt` helper at v1.8b**); runecatch carries its own divergent
   buffer that already delivers velocity — counts as applied but should conform to the canonical helper on its
   next touch (tracked as a soft divergence, not a blocking patch).
 - **needs-patch / execute (2):** lumen and drumspace — discrete onsets with no velocity sensing today; clean,

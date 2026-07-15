@@ -7,7 +7,7 @@ detection: Search for `class OneEuro` / `euroX` / `mincutoff`. Absent = still on
 applicability: All variants that smooth hand landmarks before mapping to audio/visual params — i.e. every instrument variant. N-A only if a variant deliberately uses raw landmarks (none known).
 status:
   air-guitar: needs-patch
-  augury: needs-patch
+  augury: applied@v2.7
   crystal-harp: needs-patch
   drift: needs-patch
   drumspace: needs-patch
@@ -34,6 +34,10 @@ axis. A variant that adopts One-Euro still satisfies #1 — better. The fixed-k 
 `Y_SMOOTH_K`, `Z_SMOOTH_K`) are replaced by per-signal `OneEuro` instances.
 
 ## Canonical source
+
+**2026-07-15: superseded by `site/handysynth/motion/motion.v1.js` v1.0.0 (`OneEuro` export, ADR 014).** Pin
+the shared module rather than hand-inlining a fresh copy; the code below (finger-guns) is what it was ported
+from and remains for provenance/history.
 
 `site/handysynth/finger-guns/index.html` — `class OneEuro` (input abstraction layer) + per-axis use in the
 aim path.
@@ -106,6 +110,14 @@ Four variants added since the first sweep, all on fixed-k EMA → **needs-patch*
 ## Sweep findings (2026-07-05 — pulling-cliff patched)
 
 - **applied (pulling-cliff, v0.8b):** replaced the fixed-k EMA (α=0.18) on the pitch axis with a `pitchEuro = new OneEuro(1.0, 0.007, 1.0)` instance, reset alongside hand-loss and pause per the existing `reset()` convention. Canonical `OneEuro` class copied verbatim from finger-guns, no deviation.
+
+## Sweep findings (2026-07-10 — augury patched)
+
+- **applied (augury, v2.7):** per-finger-key `OneEuro` pairs (x/y axes) replace the fixed-k `TIP_SMOOTH_K = 0.1`
+  accumulation. Canonical class copied verbatim from finger-guns. Reset convention: filters self-reset when a
+  key goes unseen >300ms, covering both hand-loss and pause/resume with one mechanism. Note: augury was
+  de-minified at v2.6, so the "minified-token anchors" caveat from the 2026-06-04 sweep no longer applies —
+  no minified variants remain.
 
 ## Deferrals
 
