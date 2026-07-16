@@ -62,3 +62,44 @@ export function larsPatternForBar(tier, bar) {
   if (tier >= 2 && bar % 4 === 0) return Object.assign({}, base, { crash: LARS_CRASH_HEAD });
   return base;
 }
+
+// ── intensity follower: slow EMA over 0.6·vol + 0.4·drive (spec §5) ──
+export class LarsIntensityFollower {
+  constructor(tau = 2.5) { this.tau = tau; this.value = 0; }
+  tick(dt, vol, drive) {
+    const target = Math.min(1, 0.6 * vol + 0.4 * drive);
+    this.value += (target - this.value) * (1 - Math.exp(-dt / this.tau));
+    return this.value;
+  }
+}
+
+// ── tier mapping with ±0.08 hysteresis — flap-proof ──
+const LARS_TIER_UP = [0.18, 0.38, 0.62], LARS_TIER_HYS = 0.08;
+export function larsTierFor(intensity, prev) {
+  let t = prev;
+  while (t < 3 && intensity > LARS_TIER_UP[t] + LARS_TIER_HYS) t++;
+  while (t > 0 && intensity < LARS_TIER_UP[t - 1] - LARS_TIER_HYS) t--;
+  return t;
+}
+
+// ── leaky arming accumulator: rests drain progress, never hard-reset it ──
+export class LarsLeakyAccumulator {
+  constructor(target = 40, drainRatio = 0.5) {
+    this.target = target; this.drainRatio = drainRatio; this.value = 0;
+  }
+  tick(dt, playing) {
+    this.value = Math.max(0, Math.min(this.target,
+      this.value + (playing ? dt : -dt * this.drainRatio)));
+    return this.value;
+  }
+  reset() { this.value = 0; }
+}
+
+// ── humanization: tight but human (spec §5) ──
+export function larsHumanize(voice, vel, rng = Math.random) {
+  const jitter = (voice === 'hat' || voice === 'hatOpen') ? 0.004 : 0.002;
+  return {
+    offset: (rng() * 2 - 1) * jitter,
+    vel: Math.max(0.05, Math.min(1, vel * (1 + (rng() * 2 - 1) * 0.15))),
+  };
+}
