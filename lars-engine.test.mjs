@@ -97,3 +97,58 @@ test('humanize: hats jitter wider than kick, velocity clamps', () => {
   const kick = larsHumanize('kick', 0.5, () => 1);
   assert.ok(Math.abs(kick.offset - 0.002) < 1e-9, 'kick jitter ±2ms');
 });
+
+import { LarsBrain, larsStepDur as _sd, LARS_STEPS_PER_BAR as _spb } from './lars-engine.js';
+const BAR = _sd(185) * _spb;   // ≈ 1.297s
+
+test('full earned lifecycle: arm → countin → walkin → in → silence → exit → off', () => {
+  const b = new LarsBrain();
+  let act = null;
+  for (let i = 0; i < 400 && !act; i++) act = b.tick(0.1, 0.5, 'auto', BAR);
+  assert.equal(act, 'start-countin');            // at ≈ 40 − 2·BAR ≈ 37.4s
+  assert.equal(b.state, 'countin');
+  assert.equal(b.onBar(1), null);
+  assert.equal(b.onBar(2), 'walkin');
+  assert.equal(b.state, 'in');
+  for (let i = 0; i < 81; i++) b.tick(0.1, 0, 'auto', BAR);   // 8.1s silence
+  assert.equal(b.state, 'exitfill');
+  assert.equal(b.onBar(0), 'exitbar');
+  assert.equal(b.onBar(0), 'stopped');
+  assert.equal(b.state, 'off');
+  assert.equal(b.acc.value, 0, 'full re-earn');
+});
+
+test('brief silence does not exit; playing resets the silence clock', () => {
+  const b = new LarsBrain();
+  b.state = 'in';
+  for (let i = 0; i < 40; i++) b.tick(0.1, 0, 'auto', BAR);   // 4s silence
+  b.tick(0.1, 0.5, 'auto', BAR);                              // one played frame
+  for (let i = 0; i < 40; i++) b.tick(0.1, 0, 'auto', BAR);   // 4s more
+  assert.equal(b.state, 'in');
+});
+
+test('mode on: immediate countin, never auto-exits', () => {
+  const b = new LarsBrain();
+  assert.equal(b.tick(0.016, 0, 'on', BAR), 'start-countin');
+  b.onBar(1); assert.equal(b.onBar(2), 'walkin');
+  for (let i = 0; i < 200; i++) b.tick(0.1, 0, 'on', BAR);    // 20s silence
+  assert.equal(b.state, 'in');
+});
+
+test('mode off: graceful from in, instant stop from countin, dormant from arming', () => {
+  const b = new LarsBrain();
+  b.state = 'in';
+  b.tick(0.016, 0.5, 'off', BAR);
+  assert.equal(b.state, 'exitfill');
+  assert.equal(b.onBar(0), 'exitbar');
+  assert.equal(b.onBar(0), 'stopped');
+  const c = new LarsBrain();
+  c.state = 'countin';
+  assert.equal(c.tick(0.016, 0.5, 'off', BAR), 'stop');
+  assert.equal(c.state, 'off');
+  const d = new LarsBrain();
+  d.tick(1, 0.5, 'auto', BAR);                                // arming, acc = 1
+  d.tick(0.016, 0.5, 'off', BAR);
+  assert.equal(d.state, 'off');
+  assert.equal(d.acc.value, 0);
+});
