@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  AUDIO_FEATURES_VERSION, bandEdges, bandEnergies, OnsetDetector,
+  AUDIO_FEATURES_VERSION, bandEdges, bandEnergies, OnsetDetector, PeakNormalizer,
 } from './audio-features.js';
 
 test('version constant exported', () => {
@@ -65,4 +65,30 @@ test('OnsetDetector: steady tone fires nothing after onset', () => {
     now += 16;
   }
   assert.equal(fires, 0, 'sustained tone is not an onset');
+});
+
+test('PeakNormalizer: converges to 1 at the running peak, clamps', () => {
+  const n = new PeakNormalizer();
+  const dt = 1 / 60;
+  assert.ok(Math.abs(n.normalize(0.5, dt) - 1) < 1e-6, 'first sample defines the peak');
+  assert.ok(Math.abs(n.normalize(0.25, dt) - 0.5) < 1e-3, 'half the peak → 0.5');
+  assert.ok(n.normalize(2.0, dt) <= 1, 'never exceeds 1');
+});
+
+test('PeakNormalizer: peak decays, quiet signals recover scale', () => {
+  const n = new PeakNormalizer({ halfLifeS: 1 }); // fast for the test
+  const dt = 1 / 60;
+  n.normalize(1.0, dt);
+  let out = 0;
+  for (let i = 0; i < 120; i++) out = n.normalize(0.1, dt); // 2s at the low level
+  assert.ok(out > 0.25, `after 2 half-lives, 0.1 reads > 0.25 (got ${out})`);
+});
+
+test('PeakNormalizer: survives silence without NaN or blow-up', () => {
+  const n = new PeakNormalizer();
+  const dt = 1 / 60;
+  for (let i = 0; i < 600; i++) {
+    const out = n.normalize(0, dt);
+    assert.ok(Number.isFinite(out) && out >= 0 && out <= 1);
+  }
 });

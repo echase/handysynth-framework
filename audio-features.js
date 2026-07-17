@@ -76,3 +76,16 @@ export class OnsetDetector {
     return out;
   }
 }
+
+// Slow AGC replacement: mic setups differ wildly in level; mappings must see
+// relative values. Peak rises instantly, decays with ~10s half-life.
+export class PeakNormalizer {
+  constructor({ halfLifeS = 10, floor = 0.02 } = {}) {
+    this.halfLifeS = halfLifeS; this.floor = floor; this.peak = floor;
+  }
+  normalize(v, dt) {
+    if (v > this.peak) this.peak = v;
+    else this.peak = Math.max(this.floor, this.peak * Math.pow(0.5, dt / this.halfLifeS));
+    return clamp01(v / this.peak);
+  }
+}
