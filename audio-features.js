@@ -42,3 +42,37 @@ export function bandEnergies(mag, edges) {
   }
   return out;
 }
+
+// Per-band spectral flux (positive increases only) against an adaptive
+// running-mean threshold. Onsets are events: never smoothed downstream (R2).
+export class OnsetDetector {
+  constructor(numBands, { k = 2.2, floor = 0.06, refractoryMs = 80, meanCoef = 0.05 } = {}) {
+    this.k = k; this.floor = floor; this.refractoryMs = refractoryMs; this.meanCoef = meanCoef;
+    this.prev = null;
+    this.meanFlux = new Float32Array(numBands);
+    this.lastFire = new Float32Array(numBands).fill(-1e9);
+    this.numBands = numBands;
+  }
+  detect(mag, edges, nowMs) {
+    const out = [];
+    const first = this.prev === null;
+    if (first) this.prev = new Uint8Array(mag.length);
+    for (let b = 0; b < this.numBands; b++) {
+      const [lo, hi] = edges[b];
+      let flux = 0;
+      for (let i = lo; i <= hi; i++) {
+        const d = mag[i] - this.prev[i];
+        if (d > 0) flux += d;
+      }
+      flux /= (hi - lo + 1) * 255; // 0–1 per band
+      const threshold = this.k * this.meanFlux[b] + this.floor;
+      const canFire = !first && (nowMs - this.lastFire[b]) >= this.refractoryMs;
+      const fired = canFire && flux > threshold;
+      if (fired) this.lastFire[b] = nowMs;
+      this.meanFlux[b] += (flux - this.meanFlux[b]) * this.meanCoef;
+      out.push({ fired, strength: fired ? clamp01((flux - threshold) / (1 - threshold || 1)) : 0 });
+    }
+    this.prev.set(mag);
+    return out;
+  }
+}
