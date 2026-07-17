@@ -11,6 +11,8 @@ Manual update 2026-07-17 (c): new concern `camera-sampled-impulse.md` — delive
 
 Manual update 2026-07-17 (b): new concern `flap-fidelity.md` — bilateral-antiphase flap detection + synchrony-gate discrimination (flap vs reposition), seeded by Thermal's Phase 0 spike (thermal v0.1b, Pyrefey repo, branch `feat/thermal-v0.1b`; synthetic evidence, live rows provisional pending felt play-test). Applies to body-scale periodic-gesture variants (thermal, and Sway / Tremolo Garden when built) — n/a for all 18 current board variants, so the matrix gains the row with no open cells. Thermal itself applies one-euro natively (this build clears its `▲` inheritance question — it never inherits the fixed-k EMA).
 
+Manual update 2026-07-17 (d): new concern `two-body-pose-reliability.md` — where two-person `PoseLandmarker` (`numPoses: 2`) is usable on one webcam, seeded by Between's Phase 0 spike (between v0.1b, Pyrefey repo, branch `feat/between-v0.1b`; synthetic + headless-live evidence, gate decision duet-full symmetry-hardened, PROVISIONAL pending a two-person felt play-test — the live range map ships deliberately unfilled, and `between/spike/probe.html` is self-serve so the session with two people can fill it). Applies to variants tracking two or more bodies from one camera — n/a for all 18 current board variants (every one is single-body or hand-scale), so the matrix gains the row with no open cells. Key transferable finding: **MediaPipe carries no cross-frame pose identity, but a relational design can be immune rather than merely robust** — position-sort anchors every frame (never read the pose index) and keep every relational scalar symmetric in (A,B), and the index-swap rate stops being a gating risk. Between measures `max |Δ| == 0` (exact, not approximate) feeding (A,B) vs (B,A); mirroring is provably swap-invariant because reflection preserves norms. This collapses the spec's first two gate outcomes into the same shipped artifact. It is `two-hand-role-stability` generalized to body scale, and that concern's `n/a` reasoning for embra ("anatomical identity, no handedness label") does NOT extend to two independent bodies.
+
 → source of truth: each `concerns/<id>.md` · format: [README.md](README.md) · backlog: [CANDIDATES.md](CANDIDATES.md)
 
 ---
@@ -39,6 +41,7 @@ grep -l "<variant>:.*\(deferred\|unknown\|needs-patch\)" concerns/*.md
 | two-hand-role-stability | ✓v1 | n/a | n/a | n/a | n/a | n/a | n/a | n/a | ▲ | n/a | n/a | ✓v0.7b | n/a | ▲ | ✓v1.8b | ▲ | ✓v1 | ▲ |
 | flap-fidelity | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
 | camera-sampled-impulse | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| two-body-pose-reliability | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
 
 Columns: airg=air-guitar · augu=augury · crys=crystal-harp · drif=drift · drum=drumspace · embr=embra ·
 fing=finger-guns · fire=fireflies · loom=loom · lume=lumen · lmra=lumora · pcli=pulling-cliff · puls=pulse ·
