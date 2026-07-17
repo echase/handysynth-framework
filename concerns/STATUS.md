@@ -7,6 +7,8 @@ Manual update 2026-07-10 (b): augury v2.7 closed one-euro-smoothing (per-key x/y
 Manual update 2026-07-17: `site/handysynth/core/core.v1.js` v1.0.0 shipped in the Pyrefey repo (merge `fffc293`; extracted from this repo's `handysynth.js` v1.2 @ `0aaf997`). The ADR 009 shared core now exists — migrating onto it (plus clearing known core-level bugs) is what drops a variant's `b` suffix; adoption stays lazy, no matrix change. It is the canonical source for the MediaPipe-init/camera/frame-loop/pinch pipeline ~24 variants re-inline, and for two-hand octave roles it carries the donor's positional `isLeft` fix (complements `motion.v1.js` `createRoleTracker` for the **two-hand-role-stability** row). Dual-model fps-budget spike: Outcome A — budget holds only under cadence arbitration; `createFpsArbiter` ships inside core and is mandatory for dual-model variants (evidence: `site/handysynth/core/CHANGELOG.md`). The ventriloquist/gestural-looper platform gate is cleared.
 Manual update 2026-07-15: `site/handysynth/motion/motion.v1.js` v1.0.0 shipped (ADR 014, pin-and-inline delivery). It is the new canonical source for **one-euro-smoothing**, **velocity-from-history**, and **two-hand-role-stability** — supersedes the individual canonical-source pointers below (finger-guns' `OneEuro`, the concern doc's own `pushPos`/`velAt`, stellar-conductor v1.8b's `pickRoles`). The matrix below is unchanged: no sweep migration (ADR 009/014 — adoption is lazy, at each variant's next substantive change). Going forward, "closing" any of these three concerns for a variant means pinning `motion.v1.js` rather than hand-inlining a fresh copy of the old canonical source.
 
+Manual update 2026-07-17 (b): new concern `flap-fidelity.md` — bilateral-antiphase flap detection + synchrony-gate discrimination (flap vs reposition), seeded by Thermal's Phase 0 spike (thermal v0.1b, Pyrefey repo, branch `feat/thermal-v0.1b`; synthetic evidence, live rows provisional pending felt play-test). Applies to body-scale periodic-gesture variants (thermal, and Sway / Tremolo Garden when built) — n/a for all 18 current board variants, so the matrix gains the row with no open cells. Thermal itself applies one-euro natively (this build clears its `▲` inheritance question — it never inherits the fixed-k EMA).
+
 → source of truth: each `concerns/<id>.md` · format: [README.md](README.md) · backlog: [CANDIDATES.md](CANDIDATES.md)
 
 ---
@@ -33,6 +35,7 @@ grep -l "<variant>:.*\(deferred\|unknown\|needs-patch\)" concerns/*.md
 | velocity-from-history | ▲ | ✓ | ▲ | n/a | ▲ | n/a | n/a | n/a | ▲ | ✓ | ✓ | ▲ | def | ✓ | ✓v1.8b | ▲ | n/a | n/a |
 | swap-and-pop-particles | ✓ | ✓v2 | ✓ | ✓ | ✓ | ✓ | n/a | ✓ | ▲ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | two-hand-role-stability | ✓v1 | n/a | n/a | n/a | n/a | n/a | n/a | n/a | ▲ | n/a | n/a | ✓v0.7b | n/a | ▲ | ✓v1.8b | ▲ | ✓v1 | ▲ |
+| flap-fidelity | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
 
 Columns: airg=air-guitar · augu=augury · crys=crystal-harp · drif=drift · drum=drumspace · embr=embra ·
 fing=finger-guns · fire=fireflies · loom=loom · lume=lumen · lmra=lumora · pcli=pulling-cliff · puls=pulse ·
