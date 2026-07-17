@@ -89,3 +89,56 @@ export class PeakNormalizer {
     return clamp01(v / this.peak);
   }
 }
+
+// Slow tier (2–5 s): steers ONLY palette drift, so a crude estimate is fine
+// by design (spec §1). Not a beat tracker — separates ballad from banger.
+export class SlowTier {
+  constructor({ maxIois = 24 } = {}) {
+    this.maxIois = maxIois;
+    this.lastOnsetMs = null;
+    this.iois = []; // seconds
+    this.loudAvg = 0; this.centroidAvg = 0.5;
+    this.tempo = 0; this.arousal = 0; this.valence = 0.5;
+  }
+  onOnset(nowMs) {
+    if (this.lastOnsetMs !== null) {
+      const ioi = (nowMs - this.lastOnsetMs) / 1000;
+      if (ioi >= 0.25 && ioi <= 2.0) {
+        this.iois.push(ioi);
+        if (this.iois.length > this.maxIois) this.iois.shift();
+      }
+    }
+    this.lastOnsetMs = nowMs;
+  }
+  _tempoEstimate() {
+    if (this.iois.length < 8) return 0;
+    const bins = new Map(); // 20 ms bins → mode
+    for (const ioi of this.iois) {
+      const key = Math.round(ioi * 50);
+      bins.set(key, (bins.get(key) || 0) + 1);
+    }
+    let bestKey = 0, bestN = 0;
+    for (const [key, n] of bins) if (n > bestN) { bestN = n; bestKey = key; }
+    return 60 / (bestKey / 50);
+  }
+  _regularity() {
+    if (this.iois.length < 8) return 0;
+    const s = [...this.iois].sort((a, b) => a - b);
+    const q = (p) => s[Math.min(s.length - 1, Math.floor(p * s.length))];
+    const median = q(0.5) || 1e-6;
+    return 1 - clamp01((q(0.75) - q(0.25)) / median);
+  }
+  update(loud, centroid, dt) {
+    const cAvg = dt / 3, cOut = dt / 5; // ~3 s inputs, ~5 s outputs
+    this.loudAvg += (clamp01(loud) - this.loudAvg) * cAvg;
+    this.centroidAvg += (clamp01(centroid) - this.centroidAvg) * cAvg;
+    const bpm = this._tempoEstimate();
+    const normTempo = clamp01((bpm - 60) / 120);
+    const arousalTarget = clamp01(0.6 * normTempo + 0.4 * this.loudAvg);
+    const valenceTarget = clamp01(0.65 * this.centroidAvg + 0.35 * this._regularity());
+    this.tempo += (bpm - this.tempo) * cOut;
+    this.arousal += (arousalTarget - this.arousal) * cOut;
+    this.valence += (valenceTarget - this.valence) * cOut;
+    return { tempo: this.tempo, arousal: this.arousal, valence: this.valence };
+  }
+}

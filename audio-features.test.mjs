@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  AUDIO_FEATURES_VERSION, bandEdges, bandEnergies, OnsetDetector, PeakNormalizer,
+  AUDIO_FEATURES_VERSION, bandEdges, bandEnergies, OnsetDetector, PeakNormalizer, SlowTier,
 } from './audio-features.js';
 
 test('version constant exported', () => {
@@ -91,4 +91,41 @@ test('PeakNormalizer: survives silence without NaN or blow-up', () => {
     const out = n.normalize(0, dt);
     assert.ok(Number.isFinite(out) && out >= 0 && out <= 1);
   }
+});
+
+test('SlowTier: steady 120 BPM onsets converge tempo near 120', () => {
+  const st = new SlowTier();
+  let now = 0;
+  for (let i = 0; i < 20; i++) { st.onOnset(now); now += 500; } // 500ms = 120 BPM
+  let out;
+  // 1200 frames = 20 s = 4 output time-constants (~5 s each): 120·(1−e⁻⁴) ≈ 117.8
+  for (let i = 0; i < 1200; i++) out = st.update(0.6, 0.5, 1 / 60);
+  assert.ok(Math.abs(out.tempo - 120) < 8, `tempo ≈ 120, got ${out.tempo}`);
+});
+
+test('SlowTier: fast+loud reads higher arousal than slow+quiet', () => {
+  const mk = (ioiMs, loud) => {
+    const st = new SlowTier();
+    let now = 0;
+    for (let i = 0; i < 20; i++) { st.onOnset(now); now += ioiMs; }
+    let out;
+    for (let i = 0; i < 600; i++) out = st.update(loud, 0.5, 1 / 60);
+    return out.arousal;
+  };
+  assert.ok(mk(330, 0.9) > mk(1000, 0.15) + 0.2, 'banger ≫ ballad');
+});
+
+test('SlowTier: bright+regular reads higher valence than dark+irregular', () => {
+  const mk = (iois, centroid) => {
+    const st = new SlowTier();
+    let now = 0;
+    for (const ioi of iois) { st.onOnset(now); now += ioi; }
+    let out;
+    for (let i = 0; i < 600; i++) out = st.update(0.5, centroid, 1 / 60);
+    return out.valence;
+  };
+  const regular = Array(20).fill(500);
+  const irregular = [310, 940, 420, 1700, 260, 880, 1300, 350, 700, 1900,
+                     450, 1100, 300, 800, 1500, 620, 980, 270, 1350, 540];
+  assert.ok(mk(regular, 0.8) > mk(irregular, 0.2) + 0.2, 'major-ish ≫ minor-ish proxy');
 });
