@@ -9,7 +9,7 @@ Living document. Update this when artifacts are created, decisions are made, or 
 |------|--------|-------------|
 | `handysynth.js` | v1.1 stable | Gesture detection, hand tracking, pitch mapping, startup orchestration. iOS Safari audio fix applied. |
 | `effort-curves.js` | v0.1.0 | Landmark-agnostic effort features (energy, smoothness, stillness, onsets). Node-tested. First consumer: embra. |
-| `lumini.js` | v0.1.0 | Input-agnostic WebGL fluid feedback layer — screen-space `splat()`, energy turbulence (R5), idle breathing (R16), `under`/`over` layering, pause/resume, context-loss handling. Node-tested. Demo/tuning rig: `lumini-demo.html`. |
+| `lumini.js` | v0.2.0 | Input-agnostic WebGL fluid feedback layer — screen-space `splat()`, energy turbulence (R5), idle breathing (R16), `under`/`over` layering, pause/resume, context-loss handling. Node-tested. Demo/tuning rig: `lumini-demo.html`. |
 | `CLAUDE.md` | Current | Architecture spec, callback interface, constructor options, constraints |
 
 ### Variants
@@ -56,7 +56,7 @@ Living document. Update this when artifacts are created, decisions are made, or 
 - [ ] Define initial engine set by consolidating existing catalog DSP (FM, subtractive, additive/bell, Karplus-Strong, perc)
 - [x] Author `voices.v1.js` (engine registry + VoiceBank + loader/cache); pilot on one variant (`drumspace` or `crystal-harp`) — **done 2026-06-13:** `perc` engine + `VoiceBank` shipped; `drumspace` v1.7 consumes the Tier-0 set as pure-data patches (`voices v1.0.0`, all 12 validated)
 - [x] **`wavetable` engine** (P0 next engine) — **done 2026-06-13:** native `PeriodicWave` morph + unison + filter/amp ADSR + LFO, declarative Z depth-routing (decision #3); `voices v1.1.0` (additive, same file); `tier0-wavetable.v1.json` (12 melodic voices); `play.html` keyboard auditioner. Headless + real-AudioContext validated
-- [ ] `sample`/rompler engine (P0); `formant` + `modal` (P1)
+- [x] **`sample`/rompler engine** (P0) — **done 2026-06-13:** `AudioBufferSourceNode` + `playbackRate` resampling (transient/decay baked, formant shift = rompler character); Tier-0 buffers rendered procedurally from a declarative `sample.render` recipe (CC0, single-file) via `renderBuffer`; filter/amp ADSR + LFO + declarative Z routing; `voices v1.2.0` (additive, same file); `tier0-sample.v1.json` (12 voices); `play.html` now plays both bundles (24 voices). Headless + real-AudioContext (offline-render) validated. `formant` + `modal` (P1) next
 - [ ] Stand up static registry at `everittchase.com/handysynth/voices/` (manifest + starter patches, Cloudflare-fronted)
 
 ### Gesture Vocabulary Expansion
@@ -85,5 +85,7 @@ Living document. Update this when artifacts are created, decisions are made, or 
 | 2026-06-13 | HandyVoice feasibility → architecture: modular voice library, offline-complete core + enhancement tiers | ADR 010, `2026-06-13-handyvoice-design.md` |
 | 2026-06-13 | HandyVoice build: `perc` engine + `VoiceBank` authored; prior-art brief + 5 resolved design decisions; `drumspace` pilot shipped (v1.7, voices v1.0.0) | `site/handysynth/voices/voices.v1.js`, `2026-06-14-handyvoice-prior-art.md`, `drumspace` v1.7 |
 | 2026-06-13 | HandyVoice `wavetable` engine + Tier-0 wavetable voice set; declarative Z depth-routing; playable keyboard auditioner | `voices.v1.js` v1.1.0, `tier0-wavetable.v1.json` (12 voices), `voices/play.html` |
+| 2026-06-13 | HandyVoice `sample`/rompler engine + Tier-0 rompler voice set (procedural CC0 buffers); `play.html` plays both bundles (24 voices) | `voices.v1.js` v1.2.0, `tier0-sample.v1.json` (12 voices), `manifest.v1.json` |
+| 2026-06-13 | Real MediaPipe hand tracking wired into the `play.html` auditioner — two play paradigms the tool auditions for: **Pluck** (pinch fires, velocity from close-speed) and **Bow** (thumb↔index gap swells the voice in/out, "hand talking" from pulling-cliff). Inlined tracker (drumspace convention); pentatonic pitch-from-X. Verified headless: module loads, 24 voices, camera chain runs + degrades gracefully on denied grant | `voices/play.html` (hand-driven testing block) |
 
 *Update this table as new conversations produce artifacts or decisions.*

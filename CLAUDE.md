@@ -4,6 +4,19 @@
 
 A platform for building spatial hand-tracked musical instruments in the browser. The core handles MediaPipe hand tracking, pinch gesture detection, depth estimation, pitch mapping, and startup orchestration. Variants implement audio engines and visual themes on top.
 
+## Research Foundation
+
+Two shared modules — `effort-curves.js` and `lumini.js` — are grounded in a multi-domain
+research corpus on embodied musicality. Before designing gesture→sound mappings or
+sound→visual mappings, read the research:
+
+- **BrainMaster:** `brain read embodied-musicality-corpus` — the index of all sources
+- **Entry points (in order):**
+  1. `docs/embodied-musicality-context-primer-2026-07-09-reference.md` — gesture→sound: Laban, Godøy, Cadoz, effort-as-control
+  2. `docs/lumini-sound-to-light-mapping-2026-07-09-synthesis.md` — sound→light: crossmodal correspondences, emotion-mediation, engineering practice
+- **Master paper** (when it exists): `docs/embodied-musicality-design-framework-2026-07-10-synthesis.md` — the full arc, platform-agnostic
+- **ADR 011:** `docs/adr/011-effort-curves-over-coordinates.md` — why effort, not coordinates
+
 ## Architecture
 
 ```
@@ -129,7 +142,7 @@ new HandySynth({
 2. Implement callbacks in `variant.js`
 3. Theme `index.html` (styles, controls, overlay)
 4. Wire controls to `hs.setScale()`, `hs.setRoot()`, `hs.setVolume()`
-5. **Apply all items from `VARIANT-POLISH.md`** (v1.1) — 16 mandatory UX refinements (motion smoothing, master-bus pause, full-screen help, immersive mode, stuck-note prevention, click-free ramps, contrast floor, swap-and-pop, etc.) that every variant must include
+5. **Apply all items from `VARIANT-POLISH.md`** (v1.2) — 16 mandatory UX refinements (motion smoothing, master-bus pause, full-screen help, immersive mode, stuck-note prevention, click-free ramps, contrast floor, swap-and-pop, etc.) that every variant must include
 
 The audio graph topology is up to you. The core provides `masterGain` → `analyser` → `destination`. Connect your audio into `masterGain`. If you need reverb, compression, or other bus effects, build them in `onInit` and route through `masterGain`.
 

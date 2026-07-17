@@ -13,7 +13,7 @@ When a variant lands in `drop/`, screen it **before** running the move/generate 
 
 Screening verifies; it does not auto-fix. Tier 1 blocks the pipeline. Tiers 2–3 are surfaced for the operator to direct.
 
-Pairs with [VARIANT-POLISH.md](VARIANT-POLISH.md) (the 13-item standard) and the catalog pipeline spec (`pyrefey-deploy/docs/superpowers/specs/2026-05-28-handysynth-catalog-design.md`).
+Pairs with [VARIANT-POLISH.md](VARIANT-POLISH.md) (the 16-item standard) and the catalog pipeline spec (`pyrefey-deploy/docs/superpowers/specs/2026-05-28-handysynth-catalog-design.md`).
 
 ---
 
