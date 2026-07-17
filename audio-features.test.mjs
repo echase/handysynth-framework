@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  AUDIO_FEATURES_VERSION, bandEdges, bandEnergies, OnsetDetector, PeakNormalizer, SlowTier,
+  AUDIO_FEATURES_VERSION, bandEdges, bandEnergies, OnsetDetector, PeakNormalizer, SlowTier, AudioFeatures,
 } from './audio-features.js';
 
 test('version constant exported', () => {
@@ -128,4 +128,37 @@ test('SlowTier: bright+regular reads higher valence than dark+irregular', () => 
   const irregular = [310, 940, 420, 1700, 260, 880, 1300, 350, 700, 1900,
                      450, 1100, 300, 800, 1500, 620, 980, 270, 1350, 540];
   assert.ok(mk(regular, 0.8) > mk(irregular, 0.2) + 0.2, 'major-ish ≫ minor-ish proxy');
+});
+
+function fakeAnalyser(freqFill, timeFill = 128) {
+  return {
+    fftSize: 2048,
+    frequencyBinCount: 1024,
+    getByteFrequencyData(u8) { freqFill(u8); },
+    getByteTimeDomainData(u8) { u8.fill(timeFill); },
+  };
+}
+
+test('AudioFeatures.frame: silence → zeroed fast tier, finite everything', () => {
+  const af = new AudioFeatures(fakeAnalyser((u8) => u8.fill(0)), 48000);
+  const f = af.frame(0, 1 / 60);
+  assert.equal(f.bands.length, 8);
+  assert.equal(f.onsets.length, 8);
+  for (const v of [...f.bands, f.rms, f.centroid, f.tempo, f.arousal, f.valence]) {
+    assert.ok(Number.isFinite(v), 'no NaN on silence');
+  }
+  assert.equal(f.rms, 0);
+});
+
+test('AudioFeatures.frame: bass content → low bands hot, centroid low', () => {
+  const af = new AudioFeatures(fakeAnalyser((u8) => {
+    u8.fill(0);
+    for (let i = 2; i < 10; i++) u8[i] = 240; // ~50–230 Hz
+  }, 200), 48000);
+  let f;
+  for (let i = 0; i < 30; i++) f = af.frame(i * 16, 1 / 60);
+  assert.ok(f.bands[0] > 0.5, `bass band hot, got ${f.bands[0]}`);
+  assert.ok(f.bands[7] < 0.05, 'treble silent');
+  assert.ok(f.centroid < 0.3, `centroid reads dark, got ${f.centroid}`);
+  assert.ok(f.rms > 0.5, 'loud signal after normalizer');
 });

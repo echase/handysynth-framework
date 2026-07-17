@@ -142,3 +142,49 @@ export class SlowTier {
     return { tempo: this.tempo, arousal: this.arousal, valence: this.valence };
   }
 }
+
+// Facade: one instance per audio source. Host applies analyser settings
+// fftSize 2048, smoothingTimeConstant 0 (flux needs raw frames), and calls
+// frame() once per rAF. All magnitudes leave normalized 0–1 (relative).
+export class AudioFeatures {
+  constructor(analyser, sampleRate, { numBands = 8, minHz = 60, maxHz = 8000 } = {}) {
+    this.analyser = analyser;
+    this.edges = bandEdges(numBands, minHz, maxHz, sampleRate, analyser.fftSize);
+    this.freq = new Uint8Array(analyser.frequencyBinCount);
+    this.time = new Uint8Array(analyser.fftSize);
+    this.onsetDet = new OnsetDetector(numBands);
+    this.norm = new PeakNormalizer();       // rms
+    this.bandNorm = new PeakNormalizer();   // shared band scale (preserves relative band balance)
+    this.slow = new SlowTier();
+  }
+  frame(nowMs, dt) {
+    this.analyser.getByteFrequencyData(this.freq);
+    this.analyser.getByteTimeDomainData(this.time);
+
+    const raw = bandEnergies(this.freq, this.edges);
+    let peakBand = 0;
+    for (const v of raw) if (v > peakBand) peakBand = v;
+    const bandScale = this.bandNorm.normalize(peakBand, dt) > 0 && peakBand > 0
+      ? clamp01(peakBand / this.bandNorm.peak) / peakBand : 0;
+    const bands = new Float32Array(raw.length);
+    for (let b = 0; b < raw.length; b++) bands[b] = clamp01(raw[b] * bandScale);
+
+    const onsets = this.onsetDet.detect(this.freq, this.edges, nowMs);
+    for (const o of onsets) if (o.fired) { this.slow.onOnset(nowMs); break; }
+
+    let sq = 0;
+    for (let i = 0; i < this.time.length; i++) {
+      const s = (this.time[i] - 128) / 128;
+      sq += s * s;
+    }
+    const rms = this.norm.normalize(Math.sqrt(sq / this.time.length), dt);
+
+    let wSum = 0, mSum = 0;
+    for (let i = 0; i < this.freq.length; i++) { wSum += i * this.freq[i]; mSum += this.freq[i]; }
+    // 0–1 across the analysed range; log-ish perceptual squash
+    const centroid = mSum > 0 ? clamp01(Math.pow(wSum / mSum / (this.freq.length * 0.35), 0.7)) : 0;
+
+    const { tempo, arousal, valence } = this.slow.update(rms, centroid, dt);
+    return { bands, onsets, rms, centroid, tempo, arousal, valence };
+  }
+}
