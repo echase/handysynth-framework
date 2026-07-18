@@ -15,6 +15,8 @@ Manual update 2026-07-17 (d): new concern `two-body-pose-reliability.md` — whe
 
 Manual update 2026-07-18: new concern `oscillation-tracking-envelope.md` — where camera-sampled hand oscillation (~1–10 Hz) is readable (per-cycle reversals vs band-energy-only vs collapse), seeded by Tremolo Garden's Phase 0 spike (tremolo-garden v0.1b, Pyrefey repo, branch `feat/tremolo-garden-v0.1b`; synthetic evidence 31/31, gate decision Mode A PROVISIONAL pending felt play-test — the live amplitude × frequency grid ships deliberately unfilled, and `tremolo-garden/spike/probe.html` is self-serve with auto-binning + results-JSON export so the session with a hand at the camera fills it). Applies to variants pricing sound on measured oscillation — n/a for all 18 current board variants, so the matrix gains the row with no open cells. Key transferable findings: frame cadence, not the tracker, sets the readable band's ceiling (rigid 30 fps mis-reads 6 Hz by +24% through grid quantization and merges ~25% of reversals at 8 Hz — run detection at camera-native cadence); detector amp is EMA-attenuated (~0.5×), so intensity gains calibrate against measured amp; One-Euro must be tuned open (minCutoff ≥ 2, beta ≥ 0.2) or it eats the 4–8 Hz band (extends `camera-sampled-impulse`'s smoothing finding to oscillation).
 
+Manual update 2026-07-18 (b): new concern `limb-isolation.md` — where per-limb motion isolation ("this wrist moved and its elbow didn't") is readable from PoseLandmarker streams, seeded by Marionette's Phase 0 spike (marionette v0.1b, Pyrefey repo, branch `feat/marionette-v0.1b`; synthetic evidence 18/18, gate decision Mode A five-strings PROVISIONAL pending felt play-test — the live readability map ships deliberately unfilled, and `marionette/spike/probe.html` is self-serve with labeled-sample marking + `MARIONETTE-PROBE-V1` export so a solo camera session fills it). Applies to variants scoring per-limb motion independence — n/a for all 18 current board variants, so the matrix gains the row with no open cells. Key transferable findings: iso speeds need a wider velocity window (200 ms) than note-attack velocity (90 ms) plus a ~0.08 torso-units/s noise floor, or 1% landmark jitter on a neighbor false-muds small-span limbs (head span 0.22×torso mudded 17% of frames at 90 ms); measuring tension body-relative (mid-shoulder anchor) makes whole-body sway cancel structurally. The matrix also gains a **mari** column (marionette cells recorded at build time on the branch): one-euro closes via the `motion.v1.js` pin, velocity-from-history applies natively (windowed `velWindow` per the concern pattern), two-hand-role-stability n/a (anatomical landmark indices — crossing arms never swaps strings).
+
 → source of truth: each `concerns/<id>.md` · format: [README.md](README.md) · backlog: [CANDIDATES.md](CANDIDATES.md)
 
 ---
@@ -35,20 +37,22 @@ grep -l "<variant>:.*\(deferred\|unknown\|needs-patch\)" concerns/*.md
 
 ## Matrix
 
-| concern | airg | augu | crys | drif | drum | embr | fing | fire | loom | lume | lmra | pcli | puls | rune | stel | syne | syri | ther |
-|---------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|
-| one-euro-smoothing | ▲ | ✓v2.7 | ▲ | ▲ | ▲ | ▲ | ✓v2 | ▲ | ▲ | ▲ | ▲ | ✓v0.8b | n/a | ▲ | n/a | ▲ | def | ▲ |
-| velocity-from-history | ▲ | ✓ | ▲ | n/a | ▲ | n/a | n/a | n/a | ▲ | ✓ | ✓ | ▲ | def | ✓ | ✓v1.8b | ▲ | n/a | n/a |
-| swap-and-pop-particles | ✓ | ✓v2 | ✓ | ✓ | ✓ | ✓ | n/a | ✓ | ▲ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| two-hand-role-stability | ✓v1 | n/a | n/a | n/a | n/a | n/a | n/a | n/a | ▲ | n/a | n/a | ✓v0.7b | n/a | ▲ | ✓v1.8b | ▲ | ✓v1 | ▲ |
-| flap-fidelity | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
-| camera-sampled-impulse | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
-| two-body-pose-reliability | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
-| oscillation-tracking-envelope | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| concern | airg | augu | crys | drif | drum | embr | fing | fire | loom | lume | lmra | pcli | puls | rune | stel | syne | syri | ther | mari |
+|---------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| one-euro-smoothing | ▲ | ✓v2.7 | ▲ | ▲ | ▲ | ▲ | ✓v2 | ▲ | ▲ | ▲ | ▲ | ✓v0.8b | n/a | ▲ | n/a | ▲ | def | ▲ | ✓v0.1b |
+| velocity-from-history | ▲ | ✓ | ▲ | n/a | ▲ | n/a | n/a | n/a | ▲ | ✓ | ✓ | ▲ | def | ✓ | ✓v1.8b | ▲ | n/a | n/a | ✓v0.1b |
+| swap-and-pop-particles | ✓ | ✓v2 | ✓ | ✓ | ✓ | ✓ | n/a | ✓ | ▲ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓v0.1b |
+| two-hand-role-stability | ✓v1 | n/a | n/a | n/a | n/a | n/a | n/a | n/a | ▲ | n/a | n/a | ✓v0.7b | n/a | ▲ | ✓v1.8b | ▲ | ✓v1 | ▲ | n/a |
+| flap-fidelity | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| camera-sampled-impulse | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| two-body-pose-reliability | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| oscillation-tracking-envelope | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| limb-isolation | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | ✓v0.1b |
 
 Columns: airg=air-guitar · augu=augury · crys=crystal-harp · drif=drift · drum=drumspace · embr=embra ·
 fing=finger-guns · fire=fireflies · loom=loom · lume=lumen · lmra=lumora · pcli=pulling-cliff · puls=pulse ·
-rune=runecatch · stel=stellar-conductor · syne=synesthesia · syri=syrinx · ther=theremin.
+rune=runecatch · stel=stellar-conductor · syne=synesthesia · syri=syrinx · ther=theremin ·
+mari=marionette (v0.1b on branch `feat/marionette-v0.1b`, unmerged — cells recorded at build time).
 
 ## Tallies (post-sweep)
 
