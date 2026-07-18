@@ -33,6 +33,7 @@ built the same thing, that is the strongest signal it belongs in the shared base
 | A4 | Additive particle render + radial-gradient glow halos | pulse, lumen, fireflies → visual variants | low–med |
 | A5 | Reverb: early reflections + stereo diffusion, no convolver file | augury, synesthesia → any | med |
 | A6 | Effort-curve features (energy/stillness/onsets) as expression axes | foundation `effort-curves.js` (from embra) → all gesture variants | low |
+| A7 | `OscillationDetector` v0.3: reversal strike events + band energy + per-hand phase (proven variant-side in `tremolo-core.mjs` v0.1.0; promote on rule of three — drumspace rolls / crystal-harp tremolo are consumers 2–3) | tremolo-garden → oscillation-reading variants | low |
 
 ## Tier B — bigger bets (high ceiling, defer-with-trigger candidates)
 
