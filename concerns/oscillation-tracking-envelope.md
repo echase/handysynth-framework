@@ -70,12 +70,17 @@ sampling alone (see finding 2) — live can only be worse.
 5. **Dropout coast:** one band-floor period (~280 ms) of coasting bridges
    real tracking flickers; longer gaps must force a release (no stuck rolls).
    Synthetic: 200 ms gap coasts clean, 700 ms gap forces exactly one release.
-6. **One-Euro sits UPSTREAM of the detector** (motion pin). Cursor-tuned
-   settings (minCutoff 1.6 / beta 0.02) eat ballistic energy (→ see:
-   [camera-sampled-impulse](camera-sampled-impulse.md)) and will attenuate
-   the 4–8 Hz band the same way. Start from minCutoff ≥ 2.0, beta ≥ 0.2 for
-   oscillation variants — smoothing separates jitter only — and verify the
-   band survives on the live probe before trusting any tighter setting.
+6. **Keep One-Euro OFF the detection path entirely** (corrected 2026-07-18,
+   same build: the original guidance here recommended minCutoff ≥ 2.0 /
+   beta ≥ 0.2 upstream of the detector, and the tremolo-garden sim pass
+   disproved it — a 2 Hz cutoff passes ~27% of a 7 Hz tremble, dropping a
+   real flutter below `minAmp`). Feed the detector the RAW tracked point:
+   its internal EMA plus the minAmp/minSwing floors are the jitter defense.
+   One-Euro (motion pin) smooths only the SELECTION path, where stability
+   matters and band loss is irrelevant. This is
+   [camera-sampled-impulse](camera-sampled-impulse.md)'s "smoothing
+   separates jitter only" finding, extended: for oscillation reading, any
+   usable smoothing is band-destructive.
 7. **Palm centroid** (mean of landmarks {0, 5, 9, 13, 17}) is the
    dropout-robust tracked point; per-axis detectors with live-axis-by-amp
    selection worked on every synthetic fixture including noisy 25 fps.
