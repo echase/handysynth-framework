@@ -129,7 +129,7 @@ function tickCursorParticles() {
 **Variant adaptation:** Change particle color, drift direction, and size to match the variant palette. Bird variants might use feather-drift physics; water variants might use droplet gravity.
 
 > [!warning] Coverage gap + bespoke-affordance caveat
-> Known **missing** in `finger-guns`, `pulling-cliff`, `syrinx` — sweep targets. But **verify before forcing it in**: `finger-guns` already indicates the cursor via its aim reticle. Don't clobber a variant's bespoke cursor affordance with the generic trail — mark it `n/a` with a one-line reason instead.
+> Known **missing** in `finger-guns`, `syrinx` — sweep targets. (`pulling-cliff` has carried a themed cursor-particle trail since v0.2b — cleared 2026-07-25.) But **verify before forcing it in**: `finger-guns` already indicates the cursor via its aim reticle. Don't clobber a variant's bespoke cursor affordance with the generic trail — mark it `n/a` with a one-line reason instead.
 
 ---
 
