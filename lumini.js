@@ -1,6 +1,6 @@
 // handysynth-foundation/lumini.js
 /**
- * Lumini v0.2.0 — bare-bones WebGL fluid feedback layer for HandySynth.
+ * Lumini v0.5.0 — bare-bones WebGL fluid feedback layer for HandySynth.
  *
  * Input-agnostic: any driver (MediaPipe hand/head, mouse, program code) calls
  *   lum.splat(x, y, dx, dy, color, radius)   // screen-space, top-left, y DOWN
@@ -10,6 +10,19 @@
  * turbulence, R16 idle breathing) are host-side choreography documented in the
  * Lumini Recipe Book; R16 is internal. See spec 2026-07-07.
  *
+ * Mount opts (v0.5.0), all optional and defaulting to v0.4.1-identical
+ * behavior — upstreamed from the pulling-cliff v0.12b field fork:
+ *   opts.opacity       canvas CSS opacity, 0..1. Default 1.
+ *   opts.heatRampCap   caps heatColor()'s top end so it never reaches white.
+ *                      Default 1 (uncapped); mellow preset uses 0.55.
+ *   opts.idleEmitters  count of R16 idle-breathing emitters. Default 3;
+ *                      mellow preset uses 1 (softer seed + gain, see PRESETS).
+ *   opts.hubScale      multiplier on hubConfig()'s energy/grit scaling.
+ *                      Default 1; mellow preset uses 0.5.
+ *   preset: 'mellow'   bundles all of the above plus a softened classic GL
+ *                      config (SPLAT_FORCE 4500, BLOOM_THRESHOLD 0.7). Any
+ *                      opt above still overrides the preset's value.
+ *
  * Single-file variants inline a pinned copy (ADR 009): record the pin in the
  * variant changelog heading, e.g. `(lumini v0.2.0)`.
  *
@@ -17,7 +30,7 @@
  * Lumora v0.35b. MacCormack advection dropped in v1.
  */
 
-export const LUMINI_VERSION = '0.4.1';
+export const LUMINI_VERSION = '0.5.0';
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
@@ -44,9 +57,12 @@ export class OneEuro {
   reset() { this.started = false; }
 }
 
-// Ember base hue (indigo-violet) ramping to hot near-white.
-export function heatColor(t) {
-  const u = clamp01(t);
+// Ember base hue (indigo-violet) ramping to hot near-white. heatRampCap
+// (v0.5.0) scales the ramp's top end down from white toward a deep violet —
+// the pulling-cliff v0.12b field fork used 0.55 so the medium never flashes
+// hot. Default 1 (uncapped) reproduces v0.4.1 exactly.
+export function heatColor(t, heatRampCap = 1) {
+  const u = clamp01(t) * clamp01(heatRampCap);
   return {
     r: 0.10 + 0.85 * u,
     g: 0.04 + 0.70 * u * u,
@@ -64,11 +80,14 @@ export function smoothEnergy(prev, target, attack, release) {
 
 // Sound-gated hub (R5): energy = transient loudness, grit = sustained drive
 // baseline. Dissipation is deliberately absent — audio injects energy, the
-// fluid owns its decay; constant dissipation reads as breathing.
-export function hubConfig(energy, grit, baseCurl, baseBloom) {
+// fluid owns its decay; constant dissipation reads as breathing. hubScale
+// (v0.5.0) scales the energy/grit contribution only (baseCurl/baseBloom pass
+// through untouched) — the pulling-cliff v0.12b field fork ran this roughly
+// halved (0.5) for a mellower response. Default 1 reproduces v0.4.1 exactly.
+export function hubConfig(energy, grit, baseCurl, baseBloom, hubScale = 1) {
   return {
-    CURL: baseCurl + clamp01(grit) * 8 + clamp01(energy) * 30,
-    BLOOM_INTENSITY: baseBloom + clamp01(energy) * 0.65,
+    CURL: baseCurl + clamp01(grit) * 8 * hubScale + clamp01(energy) * 30 * hubScale,
+    BLOOM_INTENSITY: baseBloom + clamp01(energy) * 0.65 * hubScale,
   };
 }
 
@@ -89,6 +108,37 @@ export function splatMomentum(v, force) {
 // anything falsy/non-positive falls back to the preset SPLAT_RADIUS.
 export function resolveSplatRadius(radius, fallback) {
   return radius > 0 ? radius : fallback;
+}
+
+// ── R16 idle breathing (v0.5.0 idleEmitters opt) ─────────────────────────
+// Stock seed pool: 3 independent Lissajous emitters. opts.idleEmitters lets
+// a host run fewer (the pulling-cliff v0.12b fork ran a single, differently
+// seeded emitter via the mellow preset's own idleEmitterSeeds — see PRESETS).
+export const STOCK_IDLE_EMITTERS = Object.freeze([
+  { fx: 0.7, fy: 1.1, phase: 0.0, rate: 0.08, t: 0.0 },
+  { fx: 1.3, fy: 0.6, phase: 2.1, rate: 0.06, t: 10.0 },
+  { fx: 0.5, fy: 0.9, phase: 4.2, rate: 0.10, t: 20.0 },
+]);
+
+// Slice (never pad) a seed pool down to `count` active emitters. Omitted/
+// out-of-range count falls back to the whole pool (v0.4.1-identical: 3).
+export function resolveIdleEmitters(count, pool = STOCK_IDLE_EMITTERS) {
+  const n = Number.isInteger(count) && count >= 0 ? count : pool.length;
+  return pool.slice(0, n);
+}
+
+// One emitter's Lissajous position + damped velocity for this tick's `t`.
+// gain scales velocity amplitude, heatMax caps the ember-tint input fed to
+// heatColor() — both softened by the mellow preset. Pure: no Math.random,
+// no clock reads; `e.t` is advanced by the caller before this runs.
+export function idleEmitterTick(e, idleFade, gain = { vx: 0.18, vy: 0.15 }, heatMax = 0.15) {
+  return {
+    x: 0.5 + 0.35 * Math.sin(e.t * e.fx),
+    y: 0.5 + 0.30 * Math.sin(e.t * e.fy + e.phase),
+    dx: gain.vx * e.fx * Math.cos(e.t * e.fx) * idleFade,
+    dy: gain.vy * e.fy * Math.cos(e.t * e.fy + e.phase) * idleFade,
+    heat: heatMax * idleFade,
+  };
 }
 
 // ── Circular containment (v0.4.0) ────────────────────────────────────────
@@ -138,6 +188,25 @@ export const PRESETS = {
     SPLAT_RADIUS: 0.25, SPLAT_FORCE: 6000,
     BLOOM: false, BLOOM_ITERATIONS: 8, BLOOM_INTENSITY: 0.35, BLOOM_THRESHOLD: 0.6,
     SUNRAYS: false,
+  }),
+  // v0.5.0: upstreams the pulling-cliff v0.12b field fork. GL fields are
+  // classic with SPLAT_FORCE/BLOOM_THRESHOLD softened; the non-GL fields
+  // below (Lumini.mount() reads these, the fluid core never does) carry the
+  // rest of the fork's tuning so `preset: 'mellow'` reproduces the whole
+  // look in one opt. Any matching top-level mount opt still overrides these.
+  mellow: Object.freeze({
+    SIM_RESOLUTION: 128, DYE_RESOLUTION: 1024,
+    DENSITY_DISSIPATION: 1.0, VELOCITY_DISSIPATION: 0.28,
+    PRESSURE: 0.8, PRESSURE_ITERATIONS: 20, CURL: 8,
+    SPLAT_RADIUS: 0.20, SPLAT_FORCE: 4500,
+    BLOOM: true, BLOOM_ITERATIONS: 8, BLOOM_INTENSITY: 0.35, BLOOM_THRESHOLD: 0.7,
+    SUNRAYS: false,
+    heatRampCap: 0.55,
+    hubScale: 0.5,
+    idleEmitters: 1,
+    idleEmitterSeeds: [{ fx: 0.42, fy: 0.31, phase: 1.3, rate: 0.05, t: 0.0 }],
+    idleEmitterGain: { vx: 0.07, vy: 0.06 },
+    idleEmitterHeat: 0.10,
   }),
 };
 
@@ -1663,6 +1732,10 @@ export const Lumini = {
       canvas.style.mixBlendMode = 'screen';
       canvas.style.pointerEvents = 'none';
     }
+    // Host-set layer opacity (v0.5.0), e.g. so UI overlays stay legible.
+    // Always set (not just when provided) so the default reads back as '1'
+    // rather than the empty string a caller might inspect.
+    canvas.style.opacity = String(opts.opacity ?? 1);
     container.appendChild(canvas);
 
     const fluid = createFluid(canvas, config);
@@ -1678,17 +1751,26 @@ export const Lumini = {
     const baseCurl = liveConfig.CURL, baseBloom = liveConfig.BLOOM_INTENSITY;
     let energyTarget = 0, energyNow = 0, gritNow = 0;
 
+    // v0.5.0 knobs: an explicit opt always wins, else the preset's own value
+    // (mellow sets these; classic/ember leave them undefined), else the
+    // v0.4.1-identical hard default. Resolved once at mount, not runtime.
+    const heatRampCap = opts.heatRampCap ?? preset.heatRampCap ?? 1;
+    const hubScale = opts.hubScale ?? preset.hubScale ?? 1;
+
     // R16 idle breathing: seeded Lissajous emitters keep the medium alive
-    // when no input arrives, fading out on the first real splat.
+    // when no input arrives, fading out on the first real splat. idleEmitters
+    // (v0.5.0) trims the count; the mellow preset also swaps in its own
+    // softer seed pool + velocity gain + heat cap (idleEmitterTick above).
     const idleAfter = opts.idleAfter ?? 4000;
     let lastInput = performance.now();
     let idleFade = 0;
-    // seeded at mount — NO Math.random per frame
-    const emitters = [
-      { fx: 0.7, fy: 1.1, phase: 0.0,  rate: 0.08, t: 0.0 },
-      { fx: 1.3, fy: 0.6, phase: 2.1,  rate: 0.06, t: 10.0 },
-      { fx: 0.5, fy: 0.9, phase: 4.2,  rate: 0.10, t: 20.0 },
-    ];
+    const idleEmitterPool = preset.idleEmitterSeeds || STOCK_IDLE_EMITTERS;
+    const idleEmitterCount = opts.idleEmitters ?? preset.idleEmitters ?? idleEmitterPool.length;
+    // .map() copies each seed — resolveIdleEmitters's pool entries must stay
+    // pristine (they're shared/frozen), but `e.t` below mutates per frame.
+    const emitters = resolveIdleEmitters(idleEmitterCount, idleEmitterPool).map((e) => ({ ...e }));
+    const idleEmitterGain = preset.idleEmitterGain || { vx: 0.18, vy: 0.15 };
+    const idleEmitterHeat = preset.idleEmitterHeat ?? 0.15;
 
     let raf = 0;
 
@@ -1725,17 +1807,14 @@ export const Lumini = {
           const dt = 1 / 60;
           for (const e of emitters) {
             e.t += dt * (e.rate * 8);
-            const ex = 0.5 + 0.35 * Math.sin(e.t * e.fx);
-            const ey = 0.5 + 0.30 * Math.sin(e.t * e.fy + e.phase);
-            const vx = 0.18 * e.fx * Math.cos(e.t * e.fx) * idleFade;
-            const vy = 0.15 * e.fy * Math.cos(e.t * e.fy + e.phase) * idleFade;
-            const c = heatColor(0.15 * idleFade); // embers under glass
-            fluid._applyScreenSplat({ x: ex, y: ey, dx: vx, dy: vy, color: c });
+            const s = idleEmitterTick(e, idleFade, idleEmitterGain, idleEmitterHeat);
+            const c = heatColor(s.heat, heatRampCap); // embers under glass
+            fluid._applyScreenSplat({ x: s.x, y: s.y, dx: s.dx, dy: s.dy, color: c });
           }
         }
 
         energyNow = smoothEnergy(energyNow, energyTarget, 0.5, 0.06); // ~30ms attack / ~250ms release
-        const hub = hubConfig(energyNow, gritNow, baseCurl, baseBloom);
+        const hub = hubConfig(energyNow, gritNow, baseCurl, baseBloom, hubScale);
         liveConfig.CURL = hub.CURL;
         liveConfig.BLOOM_INTENSITY = hub.BLOOM_INTENSITY;
       }
@@ -1761,7 +1840,7 @@ export const Lumini = {
       setContainment(c) { fluid.setContainment(c); },
       splat(x, y, dx, dy, color, radius) {
         lastInput = performance.now();
-        queue.push({ x, y, dx, dy, color: color || heatColor(0.5), radius });
+        queue.push({ x, y, dx, dy, color: color || heatColor(0.5, heatRampCap), radius });
       },
       destroy() {
         cancelAnimationFrame(raf); ro.disconnect();

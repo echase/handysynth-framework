@@ -1,5 +1,41 @@
 # Lumini — Changelog
 
+## v0.5.0 — 2026-07-25
+
+Upstreams the pulling-cliff v0.12b field fork (a locally-modified inlined
+v0.2.0 copy) as opt-in `Lumini.mount()` options. All default to v0.4.1-
+identical behavior — nothing changes for an existing caller that passes none
+of them.
+
+- `opts.opacity` (0..1, default `1`): sets the fluid canvas's CSS opacity so
+  a host can keep UI overlays legible on top of it.
+- `opts.heatRampCap` (default `1`, uncapped): new 2nd arg on `heatColor(t,
+  heatRampCap)` — scales the ramp's top end down from hot near-white toward
+  a deep violet. The field fork ran `0.55`.
+- `opts.idleEmitters` (default `3`): trims the R16 idle-breathing seed pool.
+  New pure exports `STOCK_IDLE_EMITTERS` (the 3 stock Lissajous seeds) and
+  `resolveIdleEmitters(count, pool)` back it; the per-tick math is now its
+  own pure `idleEmitterTick(seed, idleFade, gain?, heatMax?)`, extracted from
+  the `mount()` loop so the field fork's softened single-emitter motion
+  (gain 0.18/0.15 → 0.07/0.06, heat cap 0.15 → 0.10) is testable without a
+  GL context.
+- `opts.hubScale` (default `1`): new 5th arg on `hubConfig(energy, grit,
+  baseCurl, baseBloom, hubScale)` — multiplies the energy/grit contribution
+  only (`baseCurl`/`baseBloom` pass through untouched). The field fork ran
+  its hub response roughly halved; `hubScale: 0.5` is the clean upstream
+  equivalent (the field fork's actual hand-tuned constants — grit·5,
+  energy·14, bloom+0.28 — don't factor into a single scalar off the v0.4.1
+  numbers, so this reconciles the documented intent rather than the exact
+  arbitrary values).
+- New `mellow` preset: softened `classic` GL config (`SPLAT_FORCE` 4500,
+  `BLOOM_THRESHOLD` 0.7, matching the field fork) plus `heatRampCap: 0.55`,
+  `hubScale: 0.5`, `idleEmitters: 1` with its own seed/gain/heat fields.
+  Composes with the existing preset mechanism — `preset: 'mellow'` sets all
+  of the above, and any matching top-level mount opt still overrides it.
+- `classic`/`ember` are unchanged and carry none of the new fields, so
+  `mount()`'s `opts.KNOB ?? preset.KNOB ?? hardDefault` fallback chain
+  reaches the v0.4.1 hard default whenever a preset doesn't opt in.
+
 ## v0.4.1 — 2026-07-11
 
 Fix: FBO/texture leak on every canvas resize. `initFramebuffers()` recreated
