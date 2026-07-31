@@ -7,6 +7,7 @@ detection: Variants driving a physics sim directly from per-frame landmark posit
 applicability: Any variant where camera-sampled hand motion injects impulse/energy into simulated dynamics whose emergent state gates audible or visible events (boomslang; future lash-style waveguides, springs, thrown projectiles).
 status:
   boomslang: applied@v0.1b
+  pantastic: n/a
 ---
 
 ## Canonical pattern (from `site/handysynth/boomslang/` — core + spike)
@@ -102,5 +103,10 @@ Gate decision marked provisional pending the felt play-test.
 - **Sibling of velocity-from-history (#10):** `pushPos`/`velAt` velocity is
   for coasting/cosmetics only — a sim must consume positions through the
   pipeline above, never a velocity estimate.
+- **Corroborating measurement (pantastic, 2026-07-31, n/a for status):** pantastic drives no
+  dynamical system (lumini splats are cosmetic), but its v0.7b strike-velocity bug measured the
+  same physics from a second angle — two cascaded EMAs (position k=0.10 → speed 0.5) delivered
+  27% of a 133 ms impulse and 40% of a 200 ms one. Independent confirmation of load-bearing
+  detail #2: smoothing tuned for cursors destroys ballistic energy.
 - **Builds on release-snapshot's jitter calibration** (σ ≈ 0.003 normalized)
   and extends it from single-frame reads to sustained energy delivery.

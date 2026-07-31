@@ -17,6 +17,7 @@ status:
   loom: needs-patch
   lumen: applied
   lumora: applied
+  pantastic: applied@v0.9b
   pulling-cliff: applied@v0.8b
   pulse: deferred
   pyrefey-original: applied@v3.1
@@ -103,6 +104,20 @@ canonical `velAt`.
 ## Sweep findings (2026-07-05 — pulling-cliff patched)
 
 - **applied (pulling-cliff, v0.8b):** replaced the 2-frame `prevGap`/`prevT` derivative flagged above as a soft divergence with a capped `gapHist` ring buffer (~6 frames / ~100ms), mirroring lumora's accepted windowed `pinchHist` pattern. Onset velocity now reads the buffered span-delta instead of a single-frame delta; the buffer clears after each read. `prevGap`/`prevT` state removed as dead code.
+
+## Sweep findings (2026-07-31 — pantastic patched)
+
+- **applied (pantastic, v0.9b):** a NEW divergence flavor worth recording — not a bespoke ring
+  buffer but **cascaded EMAs**: fingertip position EMA (`TIP_SMOOTH_K = 0.10`) feeding a speed
+  EMA (gain 0.5). A strike is an impulse; each EMA attenuates it and the attenuation multiplies —
+  measured (simulated at 30 fps against shipped constants) 27% of true speed captured for a
+  133 ms flick, 40% for a 200 ms strike. Reaching `v = 1.0` required ~5 screen-widths/sec of
+  sustained motion. The pointer path had the inverse bug: an EMA with **no time decay**, so a
+  2-second-old swipe still read as full velocity at click time. Both replaced at v0.9b with the
+  pinned `motion.v1.js` `pushPos`/`velAt` (ADR 014) over raw positions; one shared
+  speed→velocity mapping across pinch and pointer paths (also closes the mismatched-floor bug,
+  0.45 pointer vs ~0.15 pinch). Detection lesson: search for *velocity computed from smoothed
+  positions* and *chained EMAs*, not just bespoke history buffers.
 
 ## Deferrals
 

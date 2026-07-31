@@ -17,6 +17,7 @@ status:
   loom: needs-patch
   lumen: needs-patch
   lumora: applied@v0.33b
+  pantastic: needs-patch
   pulling-cliff: applied@v0.8b
   pulse: n/a
   pyrefey-original: applied@v3.2
@@ -118,6 +119,17 @@ Four variants added since the first sweep, all on fixed-k EMA → **needs-patch*
   key goes unseen >300ms, covering both hand-loss and pause/resume with one mechanism. Note: augury was
   de-minified at v2.6, so the "minified-token anchors" caveat from the 2026-06-04 sweep no longer applies —
   no minified variants remain.
+
+## Sweep findings (2026-07-31 — pantastic classified)
+
+- **needs-patch / low-priority (pantastic):** fixed-k fingertip EMA (`TIP_SMOOTH_K = 0.10`),
+  but display-only as of v0.9b — the velocity path reads raw positions via `pushPos`/`velAt`
+  (see velocity-from-history). Discrete-onset instrument with no continuous pitch axis, so the
+  warble/lag trade-off One-Euro fixes barely surfaces; conform on next touch, not blocking.
+  **Cautionary data point:** pantastic's v0.7b bug — strike velocity computed FROM the smoothed
+  positions, compressing impulses to 27–40% — is the failure mode this concern's adoption can
+  cause if a variant derives velocity downstream of any smoother, One-Euro included. Smooth for
+  display; measure energy from raw.
 
 ## Deferrals
 

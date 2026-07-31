@@ -17,6 +17,8 @@ Manual update 2026-07-18: new concern `oscillation-tracking-envelope.md` — whe
 
 Manual update 2026-07-18 (b): new concern `limb-isolation.md` — where per-limb motion isolation ("this wrist moved and its elbow didn't") is readable from PoseLandmarker streams, seeded by Marionette's Phase 0 spike (marionette v0.1b, Pyrefey repo, branch `feat/marionette-v0.1b`; synthetic evidence 18/18, gate decision Mode A five-strings PROVISIONAL pending felt play-test — the live readability map ships deliberately unfilled, and `marionette/spike/probe.html` is self-serve with labeled-sample marking + `MARIONETTE-PROBE-V1` export so a solo camera session fills it). Applies to variants scoring per-limb motion independence — n/a for all 18 current board variants, so the matrix gains the row with no open cells. Key transferable findings: iso speeds need a wider velocity window (200 ms) than note-attack velocity (90 ms) plus a ~0.08 torso-units/s noise floor, or 1% landmark jitter on a neighbor false-muds small-span limbs (head span 0.22×torso mudded 17% of frames at 90 ms); measuring tension body-relative (mid-shoulder anchor) makes whole-body sway cancel structurally. The matrix also gains a **mari** column (marionette cells recorded at build time on the branch): one-euro closes via the `motion.v1.js` pin, velocity-from-history applies natively (windowed `velWindow` per the concern pattern), two-hand-role-stability n/a (anatomical landmark indices — crossing arms never swaps strings).
 
+Manual update 2026-07-31: new concern `start-listener-rearm.md` — a failed start must be retryable (no `{ once: true }` start listeners without re-arm, no unhandled throw inside `start()`), seeded by pantastic's 2026-07-25 review finding C1 (three spent `{once:true}` overlay listeners made the "tap again" instruction impossible; an unguarded `gl.getExtension` on a WebGL-less machine left a transparent click-through overlay over a dead page). Pattern is drumspace-chassis-inherited, so a catalog sweep is pending — the row ships all-`?` except pantastic (applied@v0.9b: persistent listeners + idempotent `_dsStarted` guard, try/catch with overlay restore, fluid fails soft to a playable instrument). The matrix also gains a **pant** column (pantastic joined the board late, like mari): velocity-from-history closed at v0.9b via the `motion.v1.js` pin — its v0.7b bug was a new divergence flavor, cascaded EMAs delivering 27–40% of strike impulses, recorded in that concern's 2026-07-31 sweep findings and cross-referenced as a corroborating measurement in `camera-sampled-impulse` (n/a for status — no dynamical system). one-euro stays needs-patch/low-priority (display-only EMA; velocity path reads raw). swap-and-pop and two-hand-role cells are `?` — unswept for pantastic.
+
 → source of truth: each `concerns/<id>.md` · format: [README.md](README.md) · backlog: [CANDIDATES.md](CANDIDATES.md)
 
 ---
@@ -37,29 +39,30 @@ grep -l "<variant>:.*\(deferred\|unknown\|needs-patch\)" concerns/*.md
 
 ## Matrix
 
-| concern | airg | augu | crys | drif | drum | embr | fing | fire | loom | lume | lmra | pcli | puls | rune | stel | syne | syri | ther | mari |
-|---------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|
-| one-euro-smoothing | ▲ | ✓v2.7 | ▲ | ▲ | ▲ | ▲ | ✓v2 | ▲ | ▲ | ▲ | ▲ | ✓v0.8b | n/a | ▲ | n/a | ▲ | def | ▲ | ✓v0.1b |
-| velocity-from-history | ▲ | ✓ | ▲ | n/a | ▲ | n/a | n/a | n/a | ▲ | ✓ | ✓ | ▲ | def | ✓ | ✓v1.8b | ▲ | n/a | n/a | ✓v0.1b |
-| swap-and-pop-particles | ✓ | ✓v2 | ✓ | ✓ | ✓ | ✓ | n/a | ✓ | ▲ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓v0.1b |
-| two-hand-role-stability | ✓v1 | n/a | n/a | n/a | n/a | n/a | n/a | n/a | ▲ | n/a | n/a | ✓v0.7b | n/a | ▲ | ✓v1.8b | ▲ | ✓v1 | ▲ | n/a |
-| flap-fidelity | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
-| camera-sampled-impulse | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
-| two-body-pose-reliability | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
-| oscillation-tracking-envelope | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
-| limb-isolation | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | ✓v0.1b |
+| concern | airg | augu | crys | drif | drum | embr | fing | fire | loom | lume | lmra | pant | pcli | puls | rune | stel | syne | syri | ther | mari |
+|---------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| one-euro-smoothing | ▲ | ✓v2.7 | ▲ | ▲ | ▲ | ▲ | ✓v2 | ▲ | ▲ | ▲ | ▲ | ▲ | ✓v0.8b | n/a | ▲ | n/a | ▲ | def | ▲ | ✓v0.1b |
+| velocity-from-history | ▲ | ✓ | ▲ | n/a | ▲ | n/a | n/a | n/a | ▲ | ✓ | ✓ | ✓v0.9b | ▲ | def | ✓ | ✓v1.8b | ▲ | n/a | n/a | ✓v0.1b |
+| swap-and-pop-particles | ✓ | ✓v2 | ✓ | ✓ | ✓ | ✓ | n/a | ✓ | ▲ | ✓ | ✓ | ? | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓v0.1b |
+| two-hand-role-stability | ✓v1 | n/a | n/a | n/a | n/a | n/a | n/a | n/a | ▲ | n/a | n/a | ? | ✓v0.7b | n/a | ▲ | ✓v1.8b | ▲ | ✓v1 | ▲ | n/a |
+| flap-fidelity | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| camera-sampled-impulse | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| two-body-pose-reliability | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| oscillation-tracking-envelope | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| limb-isolation | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | ✓v0.1b |
+| start-listener-rearm | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? | ✓v0.9b | ? | ? | ? | ? | ? | ? | ? | ? |
 
 Columns: airg=air-guitar · augu=augury · crys=crystal-harp · drif=drift · drum=drumspace · embr=embra ·
-fing=finger-guns · fire=fireflies · loom=loom · lume=lumen · lmra=lumora · pcli=pulling-cliff · puls=pulse ·
-rune=runecatch · stel=stellar-conductor · syne=synesthesia · syri=syrinx · ther=theremin ·
-mari=marionette (v0.1b on branch `feat/marionette-v0.1b`, unmerged — cells recorded at build time).
+fing=finger-guns · fire=fireflies · loom=loom · lume=lumen · lmra=lumora · pant=pantastic (v0.9b on main) ·
+pcli=pulling-cliff · puls=pulse · rune=runecatch · stel=stellar-conductor · syne=synesthesia · syri=syrinx ·
+ther=theremin · mari=marionette (v0.1b on branch `feat/marionette-v0.1b`, unmerged — cells recorded at build time).
 
 ## Tallies (post-sweep)
 
 | concern | applied | needs-patch | n/a | deferred |
 |---------|:-------:|:-----------:|:---:|:--------:|
-| one-euro-smoothing | 3 | 12 | 2 | 1 |
-| velocity-from-history | 5 | 6 | 6 | 1 |
+| one-euro-smoothing | 3 | 13 | 2 | 1 |
+| velocity-from-history | 6 | 6 | 6 | 1 |
 | swap-and-pop-particles | 16 | 1 | 1 | 0 |
 | two-hand-role-stability | 4 | 3 | 11 | 0 |
 
